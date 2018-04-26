@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="TB_TOP_LEVEL_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="TB_TOP_LEVEL" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="0fs"></ZoomStartTime>
+      <ZoomEndTime time="530500001fs"></ZoomEndTime>
+      <Cursor1Time time="210000000fs"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="216"></NameColumnWidth>
+      <ValueColumnWidth column_width="215"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="85" />
+   <wvobject fp_name="/TB_TOP_LEVEL/EXCEPTION_FLAG" type="logic">
+      <obj_property name="ElementShortName">EXCEPTION_FLAG</obj_property>
+      <obj_property name="ObjectShortName">EXCEPTION_FLAG</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/EXCEPTION_ROB_IN" type="array">
+      <obj_property name="ElementShortName">EXCEPTION_ROB_IN[3:0]</obj_property>
+      <obj_property name="ObjectShortName">EXCEPTION_ROB_IN[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/EXCEPTION_PC" type="array">
+      <obj_property name="ElementShortName">EXCEPTION_PC[9:0]</obj_property>
+      <obj_property name="ObjectShortName">EXCEPTION_PC[9:0]</obj_property>
+   </wvobject>
+   <wvobject type="divider" fp_name="divider9">
+      <obj_property name="label">ISSUE</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ISSUE_CP/A_ACK" type="logic">
+      <obj_property name="ElementShortName">A_ACK</obj_property>
+      <obj_property name="ObjectShortName">A_ACK</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ISSUE_CP/L_ACK" type="logic">
+      <obj_property name="ElementShortName">L_ACK</obj_property>
+      <obj_property name="ObjectShortName">L_ACK</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ISSUE_CP/ADDR" type="array">
+      <obj_property name="ElementShortName">ADDR[9:0]</obj_property>
+      <obj_property name="ObjectShortName">ADDR[9:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ISSUE_CP/INSTRUCTION" type="array">
+      <obj_property name="ElementShortName">INSTRUCTION[18:0]</obj_property>
+      <obj_property name="ObjectShortName">INSTRUCTION[18:0]</obj_property>
+   </wvobject>
+   <wvobject type="divider" fp_name="divider14">
+      <obj_property name="label">ARCH REGISTER FILE</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/RF/ROB_RD" type="array">
+      <obj_property name="ElementShortName">ROB_RD[4:0]</obj_property>
+      <obj_property name="ObjectShortName">ROB_RD[4:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/RF/ROB_V" type="array">
+      <obj_property name="ElementShortName">ROB_V[31:0]</obj_property>
+      <obj_property name="ObjectShortName">ROB_V[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/RF/ROB_WE" type="logic">
+      <obj_property name="ElementShortName">ROB_WE</obj_property>
+      <obj_property name="ObjectShortName">ROB_WE</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/RF/RS" type="array">
+      <obj_property name="ElementShortName">RS[4:0]</obj_property>
+      <obj_property name="ObjectShortName">RS[4:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/RF/RT" type="array">
+      <obj_property name="ElementShortName">RT[4:0]</obj_property>
+      <obj_property name="ObjectShortName">RT[4:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/RF/DATA_RS" type="array">
+      <obj_property name="ElementShortName">DATA_RS[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_RS[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/RF/DATA_RT" type="array">
+      <obj_property name="ElementShortName">DATA_RT[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_RT[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/RF/V" type="array">
+      <obj_property name="ElementShortName">V[31:0][31:0]</obj_property>
+      <obj_property name="ObjectShortName">V[31:0][31:0]</obj_property>
+   </wvobject>
+   <wvobject type="divider" fp_name="divider24">
+      <obj_property name="label">ROB</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/PC" type="array">
+      <obj_property name="ElementShortName">PC[9:0]</obj_property>
+      <obj_property name="ObjectShortName">PC[9:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/ISSUE_WE" type="logic">
+      <obj_property name="ElementShortName">ISSUE_WE</obj_property>
+      <obj_property name="ObjectShortName">ISSUE_WE</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/INSTRUCTION" type="array">
+      <obj_property name="ElementShortName">INSTRUCTION[18:0]</obj_property>
+      <obj_property name="ObjectShortName">INSTRUCTION[18:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/Q_FOR_NEW_INSTR" type="array">
+      <obj_property name="ElementShortName">Q_FOR_NEW_INSTR[3:0]</obj_property>
+      <obj_property name="ObjectShortName">Q_FOR_NEW_INSTR[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/Q_RS_ROB" type="array">
+      <obj_property name="ElementShortName">Q_RS_ROB[3:0]</obj_property>
+      <obj_property name="ObjectShortName">Q_RS_ROB[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/Q_RT_ROB" type="array">
+      <obj_property name="ElementShortName">Q_RT_ROB[3:0]</obj_property>
+      <obj_property name="ObjectShortName">Q_RT_ROB[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/DATA_RS_ROB" type="array">
+      <obj_property name="ElementShortName">DATA_RS_ROB[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_RS_ROB[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/DATA_RT_ROB" type="array">
+      <obj_property name="ElementShortName">DATA_RT_ROB[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_RT_ROB[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/DATA_RS_ROB_VALID" type="logic">
+      <obj_property name="ElementShortName">DATA_RS_ROB_VALID</obj_property>
+      <obj_property name="ObjectShortName">DATA_RS_ROB_VALID</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/DATA_RT_ROB_VALID" type="logic">
+      <obj_property name="ElementShortName">DATA_RT_ROB_VALID</obj_property>
+      <obj_property name="ObjectShortName">DATA_RT_ROB_VALID</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/CDB_V" type="array">
+      <obj_property name="ElementShortName">CDB_V[31:0]</obj_property>
+      <obj_property name="ObjectShortName">CDB_V[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/CDB_Q" type="array">
+      <obj_property name="ElementShortName">CDB_Q[3:0]</obj_property>
+      <obj_property name="ObjectShortName">CDB_Q[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/ROB_VALUE" type="array">
+      <obj_property name="ElementShortName">ROB_VALUE[31:0]</obj_property>
+      <obj_property name="ObjectShortName">ROB_VALUE[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/ROB_RD" type="array">
+      <obj_property name="ElementShortName">ROB_RD[4:0]</obj_property>
+      <obj_property name="ObjectShortName">ROB_RD[4:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/RF_WE" type="logic">
+      <obj_property name="ElementShortName">RF_WE</obj_property>
+      <obj_property name="ObjectShortName">RF_WE</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/EXCEPTION_PC" type="array">
+      <obj_property name="ElementShortName">EXCEPTION_PC[9:0]</obj_property>
+      <obj_property name="ObjectShortName">EXCEPTION_PC[9:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/EXCEPTION_ROB_OUT" type="array">
+      <obj_property name="ElementShortName">EXCEPTION_ROB_OUT[3:0]</obj_property>
+      <obj_property name="ObjectShortName">EXCEPTION_ROB_OUT[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/EXCEPTION_FLAG" type="logic">
+      <obj_property name="ElementShortName">EXCEPTION_FLAG</obj_property>
+      <obj_property name="ObjectShortName">EXCEPTION_FLAG</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/EXCEPTION_ROB_IN" type="array">
+      <obj_property name="ElementShortName">EXCEPTION_ROB_IN[3:0]</obj_property>
+      <obj_property name="ObjectShortName">EXCEPTION_ROB_IN[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/TAIL" type="array">
+      <obj_property name="ElementShortName">TAIL[3:0]</obj_property>
+      <obj_property name="ObjectShortName">TAIL[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/HEAD" type="array">
+      <obj_property name="ElementShortName">HEAD[3:0]</obj_property>
+      <obj_property name="ObjectShortName">HEAD[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/EXCEPTION_ROB_OUT_SIG" type="array">
+      <obj_property name="ElementShortName">EXCEPTION_ROB_OUT_SIG[3:0]</obj_property>
+      <obj_property name="ObjectShortName">EXCEPTION_ROB_OUT_SIG[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ROBBING_IN_ORDER/ROB_REG" type="array">
+      <obj_property name="ElementShortName">ROB_REG[14:0][51:0]</obj_property>
+      <obj_property name="ObjectShortName">ROB_REG[14:0][51:0]</obj_property>
+   </wvobject>
+   <wvobject type="divider" fp_name="divider47">
+      <obj_property name="label">LOGICAL RS</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/Q_RS_ROB" type="array">
+      <obj_property name="ElementShortName">Q_RS_ROB[3:0]</obj_property>
+      <obj_property name="ObjectShortName">Q_RS_ROB[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/Q_RT_ROB" type="array">
+      <obj_property name="ElementShortName">Q_RT_ROB[3:0]</obj_property>
+      <obj_property name="ObjectShortName">Q_RT_ROB[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/DATA_RS_ROB" type="array">
+      <obj_property name="ElementShortName">DATA_RS_ROB[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_RS_ROB[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/DATA_RT_ROB" type="array">
+      <obj_property name="ElementShortName">DATA_RT_ROB[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_RT_ROB[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/DATA_RS_ROB_VALID" type="logic">
+      <obj_property name="ElementShortName">DATA_RS_ROB_VALID</obj_property>
+      <obj_property name="ObjectShortName">DATA_RS_ROB_VALID</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/DATA_RT_ROB_VALID" type="logic">
+      <obj_property name="ElementShortName">DATA_RT_ROB_VALID</obj_property>
+      <obj_property name="ObjectShortName">DATA_RT_ROB_VALID</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/Q_FOR_NEW_INSTR" type="array">
+      <obj_property name="ElementShortName">Q_FOR_NEW_INSTR[3:0]</obj_property>
+      <obj_property name="ObjectShortName">Q_FOR_NEW_INSTR[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/EXCEPTION_ROB" type="array">
+      <obj_property name="ElementShortName">EXCEPTION_ROB[3:0]</obj_property>
+      <obj_property name="ObjectShortName">EXCEPTION_ROB[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/DATA_RS_RF" type="array">
+      <obj_property name="ElementShortName">DATA_RS_RF[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_RS_RF[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/DATA_RT_RF" type="array">
+      <obj_property name="ElementShortName">DATA_RT_RF[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_RT_RF[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/FU_Q" type="array">
+      <obj_property name="ElementShortName">FU_Q[3:0]</obj_property>
+      <obj_property name="ObjectShortName">FU_Q[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/FU_OP" type="array">
+      <obj_property name="ElementShortName">FU_OP[1:0]</obj_property>
+      <obj_property name="ObjectShortName">FU_OP[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/CDB_Q" type="array">
+      <obj_property name="ElementShortName">CDB_Q[3:0]</obj_property>
+      <obj_property name="ObjectShortName">CDB_Q[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/CDB_V" type="array">
+      <obj_property name="ElementShortName">CDB_V[31:0]</obj_property>
+      <obj_property name="ObjectShortName">CDB_V[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/CDB_Q_ACCESS_GRANTED" type="array">
+      <obj_property name="ElementShortName">CDB_Q_ACCESS_GRANTED[1:0]</obj_property>
+      <obj_property name="ObjectShortName">CDB_Q_ACCESS_GRANTED[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/RESERVATION_STATION" type="array">
+      <obj_property name="ElementShortName">RESERVATION_STATION[1:0][78:0]</obj_property>
+      <obj_property name="ObjectShortName">RESERVATION_STATION[1:0][78:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/LRS/RS/ACK" type="logic">
+      <obj_property name="ElementShortName">ACK</obj_property>
+      <obj_property name="ObjectShortName">ACK</obj_property>
+   </wvobject>
+   <wvobject type="divider" fp_name="divider63">
+      <obj_property name="label">ARITHMETIC RS</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/Q_RS_ROB" type="array">
+      <obj_property name="ElementShortName">Q_RS_ROB[3:0]</obj_property>
+      <obj_property name="ObjectShortName">Q_RS_ROB[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/Q_RT_ROB" type="array">
+      <obj_property name="ElementShortName">Q_RT_ROB[3:0]</obj_property>
+      <obj_property name="ObjectShortName">Q_RT_ROB[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/DATA_RS_ROB" type="array">
+      <obj_property name="ElementShortName">DATA_RS_ROB[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_RS_ROB[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/DATA_RT_ROB" type="array">
+      <obj_property name="ElementShortName">DATA_RT_ROB[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_RT_ROB[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/DATA_RS_ROB_VALID" type="logic">
+      <obj_property name="ElementShortName">DATA_RS_ROB_VALID</obj_property>
+      <obj_property name="ObjectShortName">DATA_RS_ROB_VALID</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/DATA_RT_ROB_VALID" type="logic">
+      <obj_property name="ElementShortName">DATA_RT_ROB_VALID</obj_property>
+      <obj_property name="ObjectShortName">DATA_RT_ROB_VALID</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/Q_FOR_NEW_INSTR" type="array">
+      <obj_property name="ElementShortName">Q_FOR_NEW_INSTR[3:0]</obj_property>
+      <obj_property name="ObjectShortName">Q_FOR_NEW_INSTR[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/EXCEPTION_ROB" type="array">
+      <obj_property name="ElementShortName">EXCEPTION_ROB[3:0]</obj_property>
+      <obj_property name="ObjectShortName">EXCEPTION_ROB[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/DATA_RS_RF" type="array">
+      <obj_property name="ElementShortName">DATA_RS_RF[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_RS_RF[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/DATA_RT_RF" type="array">
+      <obj_property name="ElementShortName">DATA_RT_RF[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_RT_RF[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/FU_Q" type="array">
+      <obj_property name="ElementShortName">FU_Q[3:0]</obj_property>
+      <obj_property name="ObjectShortName">FU_Q[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/FU_OP" type="array">
+      <obj_property name="ElementShortName">FU_OP[1:0]</obj_property>
+      <obj_property name="ObjectShortName">FU_OP[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/CDB_Q" type="array">
+      <obj_property name="ElementShortName">CDB_Q[3:0]</obj_property>
+      <obj_property name="ObjectShortName">CDB_Q[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/CDB_V" type="array">
+      <obj_property name="ElementShortName">CDB_V[31:0]</obj_property>
+      <obj_property name="ObjectShortName">CDB_V[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/CDB_Q_ACCESS_GRANTED" type="array">
+      <obj_property name="ElementShortName">CDB_Q_ACCESS_GRANTED[1:0]</obj_property>
+      <obj_property name="ObjectShortName">CDB_Q_ACCESS_GRANTED[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/RESERVATION_STATION" type="array">
+      <obj_property name="ElementShortName">RESERVATION_STATION[2:0][78:0]</obj_property>
+      <obj_property name="ObjectShortName">RESERVATION_STATION[2:0][78:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/ARS/RS/ACK" type="logic">
+      <obj_property name="ElementShortName">ACK</obj_property>
+      <obj_property name="ObjectShortName">ACK</obj_property>
+   </wvobject>
+   <wvobject type="divider" fp_name="divider79">
+      <obj_property name="label">CDB</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/CDBS/ARITHMETIC_REQ" type="logic">
+      <obj_property name="ElementShortName">ARITHMETIC_REQ</obj_property>
+      <obj_property name="ObjectShortName">ARITHMETIC_REQ</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/CDBS/LOGICAL_REQ" type="logic">
+      <obj_property name="ElementShortName">LOGICAL_REQ</obj_property>
+      <obj_property name="ObjectShortName">LOGICAL_REQ</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/CDBS/ARITHMETIC_DATA" type="array">
+      <obj_property name="ElementShortName">ARITHMETIC_DATA[31:0]</obj_property>
+      <obj_property name="ObjectShortName">ARITHMETIC_DATA[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/CDBS/LOGICAL_DATA" type="array">
+      <obj_property name="ElementShortName">LOGICAL_DATA[31:0]</obj_property>
+      <obj_property name="ObjectShortName">LOGICAL_DATA[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/CDBS/GRANTED" type="array">
+      <obj_property name="ElementShortName">GRANTED[1:0]</obj_property>
+      <obj_property name="ObjectShortName">GRANTED[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/CDBS/CDB_VALUE" type="array">
+      <obj_property name="ElementShortName">CDB_VALUE[31:0]</obj_property>
+      <obj_property name="ObjectShortName">CDB_VALUE[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/TB_TOP_LEVEL/DUT/CDBS/CDB_Q" type="array">
+      <obj_property name="ElementShortName">CDB_Q[3:0]</obj_property>
+      <obj_property name="ObjectShortName">CDB_Q[3:0]</obj_property>
+   </wvobject>
+</wave_config>
