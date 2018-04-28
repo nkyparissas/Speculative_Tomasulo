@@ -116,18 +116,18 @@ BEGIN
 		CDB_Q_ACCESS_GRANTED => CDB_Q_ACCESS_GRANTED);
 
 	FU: LOGICAL_FU 
-    PORT MAP( 
-        CLK => CLK,
+	PORT MAP( 
+		CLK => CLK,
 		RST => RST,
 		CDB_REQ => CDB_REQ,
 		CDB_GRANTED => CDB_Q_ACCESS_GRANTED,
 		-- INTERNAL SIGNALS
 		R1 => FU_V1,
-        R2 => FU_V2,
-        FOP => FU_OP,
-        Q_IN => FU_Q,
-        -------------------
-        LOGICAL_OUT  => LOGICAL_OUT,
+		R2 => FU_V2,
+		FOP => FU_OP,
+		Q_IN => FU_Q,
+		-------------------
+		LOGICAL_OUT  => LOGICAL_OUT,
 		Q_OUT => Q_OUT);  
 
 END BEHAVIORAL;
