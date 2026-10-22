@@ -8,8 +8,6 @@ Fixing an issue changes the golden traces. Hence, a fix should be followed by a 
 
 **KI-2: The reservation stations ignore all other activity in the flush cycle.** In the cycle after an exception, the stations only release flushed entries. They ignore the CDB, so a station that waits for the broadcast result is never woken up, which deadlocks `example_exception_c6` with the ROB head at entry 1. They also skip the operand fill, the dispatch and the credit return. Since `fu_tag` keeps its previous value instead of returning to `TAG_NONE`, an operation dispatched in the preceding cycle may enter the functional unit a second time (code reading).
 
-**KI-3: A wakeup in the cycle after issue is lost.** A reservation station fills its operands one cycle after issue, from the ROB lookup performed at issue. If the producer of an operand broadcasts its result in between, the station first captures the value but then overwrites it with the stale tag from the lookup, and it waits for a broadcast that never comes. The program `missed_wakeup` deadlocks this way and is marked `@xfail`.
-
 **KI-4: The ROB lookup lets the CDB take precedence over the second operand.** When the CDB broadcasts a result for one source register of the presented instruction, the lookup returns that value and does not search the ROB for the other source register, which then falls back to a possibly outdated register file value. Moreover, the broadcast value is used even if a younger in-flight instruction writes the same register (code reading).
 
 **KI-5: The reorder buffer has no full detection.** Issue does not check whether a ROB entry is free, and a full buffer (head equal to tail) cannot be distinguished from an empty one. Overflowing the 15 entries requires many completed but uncommitted instructions, which none of the test programs produces (code reading).
@@ -27,3 +25,7 @@ Fixing an issue changes the golden traces. Hence, a fix should be followed by a 
 **KI-11: Redundant register file writes.** The ROB keeps `commit_we` high during the exception cycle, so the last committed value is written a second time (visible in `example_exception_c8`), and the register file's write-first bypass compares addresses without checking `commit_we`. Neither affects the register contents, since the commit port always presents the last committed value.
 
 **KI-12: The ROB lookup searches every entry when the tail is 0.** When the occupied entries wrap around and the tail equals 0, `tail - 1` evaluates to 15, so the second search loop covers all entries, including released ones. Released entries hold `rd = r0`; hence, an instruction that reads r0 at that moment may be told to wait for an entry that never produces a result (code reading).
+
+## Fixed issues
+
+**KI-3: A wakeup in the cycle after issue was lost.** The operand fill now takes a result that the CDB broadcasts in the fill cycle directly from the bus instead of storing the stale tag from the lookup, so `missed_wakeup` completes.

@@ -20,7 +20,8 @@
 -- (2) Wakeup: every busy station whose q1 or q2 equals the tag on the CDB
 -- captures the broadcast value. (3) Operand fill: one cycle after issue, the
 -- new station copies its operands from the ROB lookup if the ROB returned a
--- tag for the register, and from the register file otherwise. (4) Dispatch:
+-- tag for the register, or from the CDB if that tag is being broadcast in the
+-- same cycle, and from the register file otherwise. (4) Dispatch:
 -- the lowest station with both operands available moves to the functional
 -- unit and is released, provided that the in-flight counter shows room in the
 -- unit's pipeline. (5) Credit return: the counter decreases whenever the CDB
@@ -28,10 +29,11 @@
 --
 -- All steps assign signals of one clocked process; hence, where two steps
 -- assign the same field in the same cycle, the later step takes effect. In
--- particular, the operand fill overrides a wakeup of the same station
--- (doc/known_issues.md, KI-3), and the credit return overrides the increment
--- of a simultaneous dispatch (KI-7). These priorities are part of the
--- verified behaviour, so the steps must keep their order.
+-- particular, the operand fill overrides a wakeup of the same station, which
+-- is why the fill itself takes a value that the CDB broadcasts in that cycle,
+-- and the credit return overrides the increment of a simultaneous dispatch
+-- (doc/known_issues.md, KI-7). These priorities are part of the verified
+-- behaviour, so the steps must keep their order.
 --
 -- While the ROB reports a flush (flush_tag /= TAG_NONE), the process releases
 -- every station whose tag lies in the circular range from flush_tag up to the
@@ -193,15 +195,19 @@ begin
             end loop;
 
             -- (3) Operand fill of the lowest station issued in the previous
-            -- cycle. The lookup results describe the ROB at the time of issue:
-            -- if the CDB broadcasts the producer's result in this cycle, step
-            -- (2) captures it, but the stale tag below overwrites it (KI-3).
+            -- cycle. The lookup results describe the ROB at the time of issue,
+            -- so a producer that broadcasts its result in this very cycle is
+            -- still reported as pending. Since this step overrides the wakeup
+            -- of step (2), it takes such a value from the CDB itself.
             found := false;
             for i in 0 to NUM_STATIONS - 1 loop
                 if not found and fill_pending(i) = '1' then
                     if rob_rs_tag /= TAG_NONE then
                         stations(i).v1 <= rob_rs_value;
                         if rob_rs_valid = '1' then
+                            stations(i).q1 <= TAG_NONE;
+                        elsif rob_rs_tag = cdb_tag then
+                            stations(i).v1 <= cdb_value;
                             stations(i).q1 <= TAG_NONE;
                         else
                             stations(i).q1 <= rob_rs_tag;
@@ -214,6 +220,9 @@ begin
                     if rob_rt_tag /= TAG_NONE then
                         stations(i).v2 <= rob_rt_value;
                         if rob_rt_valid = '1' then
+                            stations(i).q2 <= TAG_NONE;
+                        elsif rob_rt_tag = cdb_tag then
+                            stations(i).v2 <= cdb_value;
                             stations(i).q2 <= TAG_NONE;
                         else
                             stations(i).q2 <= rob_rt_tag;

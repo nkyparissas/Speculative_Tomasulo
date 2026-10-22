@@ -1,8 +1,8 @@
 ; The example program with the NOT reading r11 instead of r13. The NOT issues
-; in the cycle in which r11's producer broadcasts its result, which exposes
-; the lost operand wakeup described in doc/known_issues.md.
-;
-; @xfail lost operand wakeup during operand fill (KI-3)
+; in the cycle in which r11's producer broadcasts its result, so its
+; reservation station has to take that value from the common data bus while
+; it fills its operands. Before KI-3 was fixed, this wakeup was lost and the
+; program deadlocked.
 
 OR   r11, r0, r1       ; r11 = 1
 ADD  r12, r11, r2      ; r12 = 3
