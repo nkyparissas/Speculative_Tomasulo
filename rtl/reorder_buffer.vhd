@@ -24,10 +24,11 @@
 -- occupies the tail entry, and the tail advances. (5) Lookup: for each source
 -- register of the instruction presented at the issue stage, the ROB reports
 -- the youngest in-flight entry that writes the register, or TAG_NONE if the
--- register file is up to date. A result broadcast in this cycle takes
--- precedence over the search, which only considers the entries between head
--- and tail (KI-4, KI-12). The registered results reach the reservation
--- stations one cycle after issue, together with the register file's data.
+-- register file is up to date. The search only considers the entries between
+-- head and tail (KI-12), and a producer whose result the CDB broadcasts in
+-- this cycle supplies its value from the bus. The registered results reach
+-- the reservation stations one cycle after issue, together with the register
+-- file's data.
 --
 -- Exceptions are signalled from outside, with exception_flag and the tag of
 -- the faulting instruction. In that cycle, the ROB discards the faulting
@@ -120,20 +121,22 @@ architecture rtl of reorder_buffer is
 begin
 
     process
-        -- Reports entry i as the producer of rs and/or rt if it writes one of
+        -- Producers of rs and rt found by the lookup of step (5).
+        variable rs_found, rt_found : boolean;
+        variable rs_entry, rt_entry : natural range 0 to ROB_SIZE - 1;
+
+        -- Records entry i as the producer of rs and/or rt if it writes one of
         -- them. The searches below call it from the oldest to the youngest
-        -- entry, so the youngest producer is reported.
+        -- entry, so the youngest producer is recorded.
         procedure match(i : natural) is
         begin
             if entries(i).rd = instruction(RS_FIELD) then
-                rs_tag   <= std_logic_vector(to_unsigned(i, tag_t'length));
-                rs_value <= entries(i).value;
-                rs_valid <= entries(i).done;
+                rs_found := true;
+                rs_entry := i;
             end if;
             if entries(i).rd = instruction(RT_FIELD) then
-                rt_tag   <= std_logic_vector(to_unsigned(i, tag_t'length));
-                rt_value <= entries(i).value;
-                rt_valid <= entries(i).done;
+                rt_found := true;
+                rt_entry := i;
             end if;
         end procedure match;
     begin
@@ -208,22 +211,11 @@ begin
                 tail <= next_pointer(tail);
             end if;
 
-            -- (5) Lookup. The value outputs keep their previous contents when
-            -- no producer is found, since only the tags signal a match.
-            rs_tag   <= TAG_NONE;
-            rt_tag   <= TAG_NONE;
-            rs_valid <= '0';
-            rt_valid <= '0';
-            if cdb_tag /= TAG_NONE and entries(to_integer(unsigned(cdb_tag))).rd = instruction(RS_FIELD) then
-                -- A broadcast for rs ends the lookup, so rt is not searched (KI-4).
-                rs_tag   <= cdb_tag;
-                rs_value <= cdb_value;
-                rs_valid <= '1';
-            elsif cdb_tag /= TAG_NONE and entries(to_integer(unsigned(cdb_tag))).rd = instruction(RT_FIELD) then
-                rt_tag   <= cdb_tag;
-                rt_value <= cdb_value;
-                rt_valid <= '1';
-            elsif head < tail then
+            -- (5) Lookup of the youngest in-flight producer of each source
+            -- register.
+            rs_found := false;
+            rt_found := false;
+            if head < tail then
                 for i in 0 to ROB_SIZE - 1 loop
                     if i >= to_integer(head) and i <= to_integer(tail - 1) then
                         match(i);
@@ -244,6 +236,35 @@ begin
                         match(i);
                     end if;
                 end loop;
+            end if;
+
+            -- A producer whose result the CDB broadcasts in this cycle is not
+            -- marked done before the next edge, so its value comes from the
+            -- bus. The value outputs keep their previous contents when no
+            -- producer is found, since only the tags signal a match.
+            rs_tag   <= TAG_NONE;
+            rt_tag   <= TAG_NONE;
+            rs_valid <= '0';
+            rt_valid <= '0';
+            if rs_found then
+                rs_tag <= std_logic_vector(to_unsigned(rs_entry, tag_t'length));
+                if unsigned(cdb_tag) = rs_entry then
+                    rs_value <= cdb_value;
+                    rs_valid <= '1';
+                else
+                    rs_value <= entries(rs_entry).value;
+                    rs_valid <= entries(rs_entry).done;
+                end if;
+            end if;
+            if rt_found then
+                rt_tag <= std_logic_vector(to_unsigned(rt_entry, tag_t'length));
+                if unsigned(cdb_tag) = rt_entry then
+                    rt_value <= cdb_value;
+                    rt_valid <= '1';
+                else
+                    rt_value <= entries(rt_entry).value;
+                    rt_valid <= entries(rt_entry).done;
+                end if;
             end if;
         end if;
     end process;

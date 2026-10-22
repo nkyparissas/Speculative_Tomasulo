@@ -8,8 +8,6 @@ Fixing an issue changes the golden traces. Hence, a fix should be followed by a 
 
 **KI-2: The reservation stations ignore all other activity in the flush cycle.** In the cycle after an exception, the stations only release flushed entries. They ignore the CDB, so a station that waits for the broadcast result is never woken up, which deadlocks `example_exception_c6` with the ROB head at entry 1. They also skip the operand fill, the dispatch and the credit return. Since `fu_tag` keeps its previous value instead of returning to `TAG_NONE`, an operation dispatched in the preceding cycle may enter the functional unit a second time (code reading).
 
-**KI-4: The ROB lookup lets the CDB take precedence over the second operand.** When the CDB broadcasts a result for one source register of the presented instruction, the lookup returns that value and does not search the ROB for the other source register, which then falls back to a possibly outdated register file value. Moreover, the broadcast value is used even if a younger in-flight instruction writes the same register (code reading).
-
 **KI-5: The reorder buffer has no full detection.** Issue does not check whether a ROB entry is free, and a full buffer (head equal to tail) cannot be distinguished from an empty one. Overflowing the 15 entries requires many completed but uncommitted instructions, which none of the test programs produces (code reading).
 
 **KI-6: Functional units are not flushed.** Operations of discarded instructions remain in the functional unit pipelines and are still broadcast. Since the ROB reallocates the discarded entries, such a stale result can complete a newly allocated entry or wake up a station that waits for the new instruction (code reading).
@@ -29,3 +27,5 @@ Fixing an issue changes the golden traces. Hence, a fix should be followed by a 
 ## Fixed issues
 
 **KI-3: A wakeup in the cycle after issue was lost.** The operand fill now takes a result that the CDB broadcasts in the fill cycle directly from the bus instead of storing the stale tag from the lookup, so `missed_wakeup` completes.
+
+**KI-4: The ROB lookup let the CDB take precedence over the second operand.** The lookup now searches the ROB for the youngest in-flight producer of both source registers and takes a value from the CDB only when that producer is the entry being broadcast; `cdb_lookup_second_operand` and `cdb_lookup_younger_producer` cover both cases.
