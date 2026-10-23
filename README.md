@@ -7,7 +7,7 @@ This version was vibecoded by Nick Kyparissas using Claude Opus 5.5. It is based
 
 The processor issues one instruction per cycle in program order into the reservation stations of two execution units, executes instructions out of order as soon as their operands are available, and commits them in program order from a 15-entry reorder buffer. The logical unit (OR, AND, NOT) has two reservation stations and a two-stage pipeline, while the arithmetic unit (ADD, SUB, shift left) has three stations and a three-stage pipeline. Both units return their results over a single common data bus. Exceptions are signalled from outside the processor: the reorder buffer then discards the faulting instruction and all younger ones, and instruction fetch continues at an exception handler, whose address the generic `HANDLER_ADDR` of `top_level` sets. A request for a tag that names no instruction in flight is ignored. There are no loads, stores or branches.
 
-The original coursework only required behavioural simulation, and its code was synthesized in Vivado 2018.1. This version is written in VHDL-93 for Vivado as well. It has been simulated with GHDL in VHDL-93 and VHDL-2008 and passes GHDL's synthesis front-end, but it has not been run in Vivado yet. The deviations from the intended behaviour that are currently known, all inherited from the original design, are listed in [doc/known_issues.md](doc/known_issues.md).
+The original coursework only required behavioural simulation, and its code was synthesized in Vivado 2018.1. This version is written in VHDL-93 for Vivado as well. It has been simulated with GHDL in VHDL-93 and VHDL-2008 and passes GHDL's synthesis front-end, but it has not been run in Vivado yet. The deviations from the intended behaviour that the original design exhibited are listed, together with their fixes, in [doc/known_issues.md](doc/known_issues.md); no known issue remains open.
 
 ## Repository layout
 
@@ -18,7 +18,7 @@ The original coursework only required behavioural simulation, and its code was s
 | `programs/` | Assembly programs. `example.asm` is the program of the original project, and the others are tests. |
 | `tools/assembler.py` | Assembler, disassembler and reference model of the instruction set. |
 | `tests/` | `run_tests.py` (GHDL regression and functional tests), `trace_vcd.py` and the golden traces. |
-| `doc/` | Known issues, as well as the block diagram and the report (in Greek) of the original project. |
+| `doc/` | Known issues and their fixes, as well as the block diagram and the report (in Greek) of the original project. |
 
 ## Instruction set
 
@@ -60,7 +60,7 @@ After editing `programs/example.asm`, regenerate the default image with `python3
 
 `tests/run_tests.py` requires GHDL (any backend) and Python 3.8 or later. It simulates every program in `programs/` and the runs with an exception listed in `EXCEPTION_SCENARIOS`, and it performs two checks per run:
 
-1. **Regression:** the cycle-level trace of the run must match `tests/golden/<scenario>.trace`. The golden traces record the behaviour of the original design, so this check detects any change in behaviour, down to individual cycles.
+1. **Regression:** the cycle-level trace of the run must match `tests/golden/<scenario>.trace`. The golden traces record the reviewed behaviour of the design, so this check detects any change in behaviour, down to individual cycles.
 2. **Functional:** the results must match the reference model in `tools/assembler.py`. For runs without an exception, the register writes must equal its commit sequence. For runs with an exception, `EXCEPTION_SCENARIOS` in `tests/run_tests.py` names the faulting instruction, and the final registers and `exception_pc` must equal those of the reference model running the older instructions followed by the exception handler; an exception that is ignored must leave no trace of a flush. A program with a `; @xfail <reason>` line, or an exception scenario with a reason in that table, is expected to fail this check because of a known issue (XFAIL); if it passes, the run reports XPASS and fails, so that the expected failure gets removed.
 
 ```

@@ -191,9 +191,9 @@ begin
 
         elsif accepted then
             -- No entry commits in this cycle, since the faulting entry may be
-            -- the head. The commit port and the lookup results keep their
-            -- values, so a commit registered in the previous cycle is written
-            -- twice (KI-11).
+            -- the head. The write enable drops, whereas the other commit
+            -- outputs and the lookup results keep their values.
+            commit_we     <= '0';
             exception_pc  <= entries(to_integer(unsigned(exception_tag))).pc;
             flush_tag_reg <= exception_tag;
 

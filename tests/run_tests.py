@@ -11,16 +11,15 @@ sim/tb_top_level.vhd with GHDL, converts the VCD into a cycle-level trace
 (tests/trace_vcd.py) and performs two checks:
 
 1. Regression: the trace must be identical to tests/golden/<scenario>.trace.
-   The golden traces record the cycle-exact behaviour of the original design,
-   including its known issues (doc/known_issues.md), so any difference reveals
-   a behavioural change.
+   The golden traces record the reviewed cycle-exact behaviour of the design,
+   so any difference reveals a behavioural change.
 2. Functional: the results must match the reference model in
    tools/assembler.py. Without an exception, the register-file writes must
    equal its commit sequence. With an exception, the scenario names the
-   faulting instruction, and the final register contents and exception_pc
-   must equal those of the reference model running the older instructions
-   followed by the exception handler; an ignored exception must cause no
-   flush and leave exception_pc at 0.
+   faulting instruction, and the register-file writes, the final register
+   contents and exception_pc must equal those of the reference model running
+   the older instructions followed by the exception handler; an ignored
+   exception must cause no flush and leave exception_pc at 0.
    Programs with a '; @xfail <reason>' directive, and exception scenarios with
    a reason in EXCEPTION_SCENARIOS, are expected to fail this check until the
    corresponding issue is fixed.
@@ -138,16 +137,16 @@ def exception_check(words, scenario, writes, text):
     """Compare the final registers and exception_pc against the reference model.
 
     The reference model runs the instructions older than the faulting one,
-    followed by the exception handler at HANDLER_ADDR up to its HALT. Final
-    contents are compared rather than the write stream, since the exception
-    cycle repeats the last register write (KI-11). An ignored exception must
-    cause no flush and leave exception_pc at 0, and the reference model then
-    runs the whole program.
+    followed by the exception handler at HANDLER_ADDR up to its HALT, and
+    the register-file writes must equal its commit sequence. An ignored
+    exception must cause no flush and leave exception_pc at 0, and the
+    reference model then runs the whole program.
     """
     cycle, fault, xfail = scenario[1], scenario[3], scenario[4]
     generics = scenario[5] if len(scenario) > 5 else {}
     handler = int(generics.get("HANDLER_ADDR", DEFAULT_HANDLER_ADDR))
-    _, expected = assembler.run(words if fault is None else words[:fault] + words[handler:])
+    commits, expected = assembler.run(words if fault is None else words[:fault] + words[handler:])
+    observed = [(rd, value) for _, rd, value in writes]
     regs = list(trace_vcd.RF_RESET)
     for _, rd, value in writes:
         regs[rd] = value
@@ -156,6 +155,8 @@ def exception_check(words, scenario, writes, text):
     flushes = [tag for tag in column(text, "flush") if tag != "f"]
     if wrong:
         status, note = "FAIL", f"wrong final registers {', '.join(wrong)}"
+    elif observed != commits:
+        status, note = "FAIL", f"{len(observed)} register writes instead of {len(commits)} commits"
     elif fault is None and (flushes or pc != 0):
         status, note = "FAIL", "exception not ignored"
     elif fault is not None and pc != fault:

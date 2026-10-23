@@ -33,8 +33,8 @@
 -- HANDLER_ADDR, so the discarded instructions are not executed again. A
 -- request whose tag names no instruction in flight is ignored.
 --
--- See doc/known_issues.md for deviations from the intended behaviour, which
--- the regression tests in tests/ currently preserve.
+-- doc/known_issues.md describes the deviations from the intended behaviour
+-- that the original design exhibited and how they were fixed.
 --
 -- Names:
 --   ROM_FILE                    program image, see INSTRUCTION_FETCH
