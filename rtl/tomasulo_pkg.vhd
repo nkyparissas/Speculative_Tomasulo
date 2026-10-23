@@ -36,6 +36,7 @@
 --   GRANT_NONE       CDB grant value when no unit owns the bus
 --   HALT_WORD        canonical HALT instruction (all ones)
 --   execute          result of an operation, i.e. the behaviour of both ALUs
+--   in_flush_range   whether a flush discards the instruction with a given tag
 --   rs_entry_t       contents of one reservation station
 --   rob_entry_t      contents of one ROB entry
 
@@ -115,6 +116,14 @@ package tomasulo_pkg is
         value  => (others => '0'),
         done   => '0');
 
+    -- True if a flush that starts at flush_tag discards the instruction with
+    -- this tag, i.e. if the tag lies in the circular range from flush_tag up
+    -- to, but excluding, the ROB tail. The reservation stations and the
+    -- functional units use it in the cycle after an exception. If flush_tag
+    -- equals the tail, the range covers every tag, whereas the ROB discards
+    -- no entry in that case (doc/known_issues.md, KI-8).
+    function in_flush_range(tag, flush_tag, tail : tag_t) return boolean;
+
 end package tomasulo_pkg;
 
 package body tomasulo_pkg is
@@ -137,5 +146,19 @@ package body tomasulo_pkg is
             end case;
         end if;
     end function execute;
+
+    function in_flush_range(tag, flush_tag, tail : tag_t) return boolean is
+        constant t     : integer := to_integer(unsigned(tag));
+        constant first : integer := to_integer(unsigned(flush_tag));
+        constant stop  : integer := to_integer(unsigned(tail));
+    begin
+        if t > ROB_SIZE - 1 then
+            return false;
+        elsif first < stop then
+            return t >= first and t < stop;
+        else
+            return t >= first or t < stop;
+        end if;
+    end function in_flush_range;
 
 end package body tomasulo_pkg;

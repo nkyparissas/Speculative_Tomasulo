@@ -118,24 +118,6 @@ architecture rtl of reservation_stations is
         return free;
     end function any_free;
 
-    -- True if a station with this tag belongs to the flushed instructions,
-    -- i.e. to the circular range that starts at flush_tag and ends before the
-    -- tail. If flush_tag equals the tail, the range covers every tag, whereas
-    -- the ROB discards no entry in that case (doc/known_issues.md, KI-8).
-    function flushed(tag, flush_tag, tail : tag_t) return boolean is
-        constant t     : integer := to_integer(unsigned(tag));
-        constant first : integer := to_integer(unsigned(flush_tag));
-        constant stop  : integer := to_integer(unsigned(tail));
-    begin
-        if t > ROB_SIZE - 1 then
-            return false;
-        elsif first < stop then
-            return t >= first and t < stop;
-        else
-            return t >= first or t < stop;
-        end if;
-    end function flushed;
-
     signal stations     : station_array_t := (others => RS_ENTRY_EMPTY);
     signal fill_pending : std_logic_vector(NUM_STATIONS - 1 downto 0) := (others => '0');
     signal in_flight    : natural range 0 to PIPELINE_DEPTH := 0;
@@ -169,7 +151,7 @@ begin
             -- Stations of instructions that the ROB discards in this cycle;
             -- step (6) releases them, and they take part in no other step.
             for i in stations'range loop
-                discard(i) := flush_tag /= TAG_NONE and flushed(stations(i).tag, flush_tag, rob_tail);
+                discard(i) := flush_tag /= TAG_NONE and in_flush_range(stations(i).tag, flush_tag, rob_tail);
             end loop;
 
             -- (1) Issue into the lowest free station. During a flush, ack_i is

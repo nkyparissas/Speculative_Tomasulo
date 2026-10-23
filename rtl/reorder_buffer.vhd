@@ -37,8 +37,9 @@
 -- stations discard the same instructions in the following cycle. In the
 -- exception cycle, the ROB still records a result broadcast on the CDB and
 -- discards an instruction that issues in that cycle together with the
--- younger ones, but it commits no entry. The fetch unit is not redirected
--- (doc/known_issues.md, KI-10).
+-- younger ones, but it commits no entry. In the following cycle, it ignores
+-- a result of a discarded instruction that is still on the CDB. The fetch
+-- unit is not redirected (doc/known_issues.md, KI-10).
 --
 -- Names:
 --   pc, issue, instruction  instruction at the issue stage, and whether it issues
@@ -130,6 +131,8 @@ begin
         variable rs_entry, rt_entry : natural range 0 to ROB_SIZE - 1;
         -- Whether step (3) commits an entry in this cycle.
         variable committed : boolean;
+        -- The CDB carries a result that may still complete an entry.
+        variable cdb_live : boolean;
         -- The tail after an instruction that issues in the exception cycle.
         variable tail_after : pointer_t;
 
@@ -207,22 +210,29 @@ begin
                 full          <= '0';
             end if;
 
+            -- In the recovery cycle, the CDB may still carry the result of an
+            -- instruction discarded in the exception cycle, which must
+            -- neither complete its freed entry nor commit.
+            cdb_live := cdb_tag /= TAG_NONE
+                        and not (flush_tag_reg /= TAG_NONE
+                                 and flushed(to_integer(unsigned(cdb_tag)), flush_tag_reg, tail));
+
             -- (2) Writeback.
-            if cdb_tag /= TAG_NONE then
+            if cdb_live then
                 entries(to_integer(unsigned(cdb_tag))).value <= cdb_value;
                 entries(to_integer(unsigned(cdb_tag))).done  <= '1';
             end if;
 
             -- (3) Commit, either from the head entry or directly from the CDB
             -- when the head's result is being broadcast in this cycle.
-            committed := entries(to_integer(head)).done = '1' or unsigned(cdb_tag) = head;
+            committed := entries(to_integer(head)).done = '1' or (cdb_live and unsigned(cdb_tag) = head);
             if entries(to_integer(head)).done = '1' then
                 commit_we                 <= '1';
                 commit_rd                 <= entries(to_integer(head)).rd;
                 commit_value              <= entries(to_integer(head)).value;
                 entries(to_integer(head)) <= ROB_ENTRY_EMPTY;
                 head                      <= next_pointer(head);
-            elsif unsigned(cdb_tag) = head then
+            elsif cdb_live and unsigned(cdb_tag) = head then
                 commit_we                 <= '1';
                 commit_rd                 <= entries(to_integer(head)).rd;
                 commit_value              <= cdb_value;
@@ -235,8 +245,7 @@ begin
             -- (4) Allocation. The reservation stations do not accept an
             -- instruction while the buffer is full, so the tail entry is free
             -- whenever issue = '1'. The value field keeps its contents, which
-            -- are zero unless a stale result was written into the released
-            -- entry (doc/known_issues.md, KI-6).
+            -- are zero for a released entry.
             if issue = '1' then
                 entries(to_integer(tail)).opcode <= instruction(OPCODE_FIELD);
                 entries(to_integer(tail)).pc     <= pc;

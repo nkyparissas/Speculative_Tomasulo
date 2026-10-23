@@ -106,6 +106,8 @@ begin
             b         => fu_b,
             cdb_req   => cdb_req,
             cdb_grant => cdb_grant,
+            flush_tag => flush_tag,
+            rob_tail  => rob_tail,
             tag_out   => result_tag,
             result    => result);
 

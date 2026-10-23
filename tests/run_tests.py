@@ -56,6 +56,9 @@ EXCEPTION_SCENARIOS = {
     "example_exception_c6": ("example", 6, 3, (3, 4), None),
     "example_exception_c7": ("example", 7, 3, (3, 4), None),  # the original testbench
     "example_exception_c8": ("example", 8, 3, (3, 4), None),
+    "example_exception_c9": ("example", 9, 3, (3, 4), None),
+    "example_exception_tag0_c4": ("example", 4, 0, (0, 1, 2), None),
+    "example_exception_tag0_c6": ("example", 6, 0, (0, 1, 2, 3, 4), None),
 }
 
 
