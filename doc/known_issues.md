@@ -22,10 +22,10 @@ Fixing an issue changes the golden traces. Hence, a fix should be followed by a 
 
 **KI-11: Redundant register file writes.** The ROB keeps `commit_we` high during the exception cycle, so the last committed value is written a second time (visible in `example_exception_c8`), and the register file's write-first bypass compares addresses without checking `commit_we`. Neither affects the register contents, since the commit port always presents the last committed value.
 
-**KI-12: The ROB lookup searches every entry when the tail is 0.** When the occupied entries wrap around and the tail equals 0, `tail - 1` evaluates to 15, so the second search loop covers all entries, including released ones. Released entries hold `rd = r0`; hence, an instruction that reads r0 at that moment may be told to wait for an entry that never produces a result (code reading).
-
 ## Fixed issues
 
 **KI-3: A wakeup in the cycle after issue was lost.** The operand fill now takes a result that the CDB broadcasts in the fill cycle directly from the bus instead of storing the stale tag from the lookup, so `missed_wakeup` completes.
 
 **KI-4: The ROB lookup let the CDB take precedence over the second operand.** The lookup now searches the ROB for the youngest in-flight producer of both source registers and takes a value from the CDB only when that producer is the entry being broadcast; `cdb_lookup_second_operand` and `cdb_lookup_younger_producer` cover both cases.
+
+**KI-12: The ROB lookup searched every entry when the tail was 0.** The bound of the search is now compared as an integer, so a tail of 0 no longer wraps to 15 and released entries are no longer matched as producers of r0; `r0_read_at_tail_wrap` covers the case.

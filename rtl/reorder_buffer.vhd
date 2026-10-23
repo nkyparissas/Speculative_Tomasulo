@@ -25,9 +25,9 @@
 -- register of the instruction presented at the issue stage, the ROB reports
 -- the youngest in-flight entry that writes the register, or TAG_NONE if the
 -- register file is up to date. The search only considers the entries between
--- head and tail (KI-12), and a producer whose result the CDB broadcasts in
--- this cycle supplies its value from the bus. The registered results reach
--- the reservation stations one cycle after issue, together with the register
+-- head and tail, and a producer whose result the CDB broadcasts in this cycle
+-- supplies its value from the bus. The registered results reach the
+-- reservation stations one cycle after issue, together with the register
 -- file's data.
 --
 -- Exceptions are signalled from outside, with exception_flag and the tag of
@@ -217,22 +217,23 @@ begin
             rt_found := false;
             if head < tail then
                 for i in 0 to ROB_SIZE - 1 loop
-                    if i >= to_integer(head) and i <= to_integer(tail - 1) then
+                    if i >= to_integer(head) and i < to_integer(tail) then
                         match(i);
                     end if;
                 end loop;
             elsif head /= tail then
                 -- The occupied entries wrap around: search from the head to
-                -- the end of the buffer, then from the start up to tail - 1.
-                -- With a tail of 0, tail - 1 wraps to 15 and the second loop
-                -- searches every entry (KI-12).
+                -- the end of the buffer, then from the start up to the entry
+                -- before the tail. The bound is compared as an integer, so a
+                -- tail of 0 leaves the second loop empty instead of wrapping
+                -- to 15 in 4-bit arithmetic.
                 for i in 0 to ROB_SIZE - 1 loop
                     if i >= to_integer(head) then
                         match(i);
                     end if;
                 end loop;
                 for i in 0 to ROB_SIZE - 1 loop
-                    if i <= to_integer(tail - 1) then
+                    if i < to_integer(tail) then
                         match(i);
                     end if;
                 end loop;
