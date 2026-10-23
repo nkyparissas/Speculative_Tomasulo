@@ -29,15 +29,19 @@
 -- cycle, reports that the instruction in ROB entry exception_tag has faulted.
 -- The ROB and the reservation stations then discard that instruction and all
 -- younger ones, and exception_pc reports the program counter of the faulting
--- instruction. A request whose tag names no instruction in flight is
--- ignored. Instruction fetch is not redirected, so the program continues
--- with the instructions that follow the last issued one.
+-- instruction. Instruction fetch then continues at the exception handler,
+-- HANDLER_ADDR, so the discarded instructions are not executed again. A
+-- request whose tag names no instruction in flight is ignored.
 --
 -- See doc/known_issues.md for deviations from the intended behaviour, which
 -- the regression tests in tests/ currently preserve.
 --
 -- Names:
 --   ROM_FILE                    program image, see INSTRUCTION_FETCH
+--   HANDLER_ADDR                address of the exception handler; the default,
+--                               the last ROM word, holds HALT in the image of
+--                               every shorter program, so that the processor
+--                               stops after an exception
 --   pc, instruction             instruction presented at the issue stage
 --   ack_*, issue                the presented instruction is accepted by a unit
 --   rob_tail                    ROB entry allocated to the presented instruction
@@ -56,7 +60,8 @@ use work.tomasulo_pkg.all;
 
 entity top_level is
     generic (
-        ROM_FILE : string := "rom.data");
+        ROM_FILE     : string                         := "rom.data";
+        HANDLER_ADDR : natural range 0 to ROM_DEPTH - 1 := ROM_DEPTH - 1);
     port (
         clk            : in  std_logic;
         rst            : in  std_logic;
@@ -85,6 +90,7 @@ architecture structural of top_level is
     signal rf_rs_value  : word_t;
     signal rf_rt_value  : word_t;
     signal flush_tag    : tag_t;
+    signal redirect     : std_logic;
 
     signal cdb_req_logical    : std_logic;
     signal cdb_req_arithmetic : std_logic;
@@ -106,13 +112,19 @@ begin
     -- selects exactly one of them.
     issue <= ack_logical or ack_arithmetic;
 
+    -- The ROB publishes flush_tag only for the cycle after an accepted
+    -- exception, which is when fetch moves to the handler.
+    redirect <= '1' when flush_tag /= TAG_NONE else '0';
+
     u_fetch : entity work.instruction_fetch
         generic map (
-            ROM_FILE => ROM_FILE)
+            ROM_FILE     => ROM_FILE,
+            HANDLER_ADDR => HANDLER_ADDR)
         port map (
             clk         => clk,
             rst         => rst,
             advance     => issue,
+            redirect    => redirect,
             pc          => pc,
             instruction => instruction);
 

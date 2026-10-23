@@ -12,7 +12,9 @@
 -- in the next cycle. As a result, an instruction whose execution unit has no
 -- free reservation station stalls the in-order issue, and a word that no unit
 -- accepts, such as HALT_WORD, stops instruction fetch permanently. The unit
--- implements no branches, and an exception does not redirect it.
+-- implements no branches. After an exception, the reorder buffer requests a
+-- redirect for one cycle, during which no instruction issues, and the
+-- program counter then continues at the exception handler, HANDLER_ADDR.
 --
 -- The ROM file must contain exactly ROM_DEPTH lines, each holding one 19-bit
 -- word in binary. This is the file format that Vivado synthesis expects for
@@ -22,7 +24,10 @@
 --
 -- Names:
 --   ROM_FILE     name of the ROM image
+--   HANDLER_ADDR address of the first instruction of the exception handler
 --   advance      a reservation station accepted the presented instruction
+--   redirect     an exception discards the fetched instructions; fetch
+--                continues at HANDLER_ADDR
 --   pc           address of the presented instruction
 --   instruction  ROM word at address pc
 
@@ -34,11 +39,13 @@ use work.tomasulo_pkg.all;
 
 entity instruction_fetch is
     generic (
-        ROM_FILE : string);
+        ROM_FILE     : string;
+        HANDLER_ADDR : natural range 0 to ROM_DEPTH - 1);
     port (
         clk         : in  std_logic;
         rst         : in  std_logic;
         advance     : in  std_logic;
+        redirect    : in  std_logic;
         pc          : out pc_t;
         instruction : out instr_t);
 end instruction_fetch;
@@ -73,6 +80,8 @@ begin
         wait until rising_edge(clk);
         if rst = '1' then
             pc_reg <= (others => '0');
+        elsif redirect = '1' then
+            pc_reg <= to_unsigned(HANDLER_ADDR, pc_reg'length);
         elsif advance = '1' then
             pc_reg <= pc_reg + 1;
         end if;

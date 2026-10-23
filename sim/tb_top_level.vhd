@@ -26,6 +26,8 @@
 --   EXCEPTION_ROB_TAG  ROB tag of the instruction that raises the exception
 --   EXCEPTION_TAG_HELD true if exception_tag keeps its value after the flag
 --                      drops, false if it returns to 0 together with the flag
+--   HANDLER_ADDR       address of the exception handler in the program; the
+--                      default, 1023, is that of top_level (the last ROM word)
 --
 -- The default values reproduce the testbench of the original project, which
 -- raises an exception for ROB entry 3 on cycle 7.
@@ -51,7 +53,8 @@ entity tb_top_level is
         EXCEPTION_CYCLE    : integer  := 7;
         EXCEPTION_LENGTH   : positive := 1;
         EXCEPTION_ROB_TAG  : natural  := 3;
-        EXCEPTION_TAG_HELD : boolean  := true);
+        EXCEPTION_TAG_HELD : boolean  := true;
+        HANDLER_ADDR       : natural  := 1023);
 end tb_top_level;
 
 architecture tb of tb_top_level is
@@ -71,7 +74,8 @@ begin
 
     dut : entity work.top_level
         generic map (
-            ROM_FILE => ROM_FILE)
+            ROM_FILE     => ROM_FILE,
+            HANDLER_ADDR => HANDLER_ADDR)
         port map (
             clk            => clk,
             rst            => rst,

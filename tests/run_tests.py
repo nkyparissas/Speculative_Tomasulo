@@ -16,11 +16,11 @@ sim/tb_top_level.vhd with GHDL, converts the VCD into a cycle-level trace
    a behavioural change.
 2. Functional: the results must match the reference model in
    tools/assembler.py. Without an exception, the register-file writes must
-   equal its commit sequence. With an exception, the scenario lists the
-   instructions that the exception discards, and the final register contents
-   and exception_pc must equal those of the reference model run without them;
-   an exception that discards nothing must cause no flush and leave
-   exception_pc at 0.
+   equal its commit sequence. With an exception, the scenario names the
+   faulting instruction, and the final register contents and exception_pc
+   must equal those of the reference model running the older instructions
+   followed by the exception handler; an ignored exception must cause no
+   flush and leave exception_pc at 0.
    Programs with a '; @xfail <reason>' directive, and exception scenarios with
    a reason in EXCEPTION_SCENARIOS, are expected to fail this check until the
    corresponding issue is fixed.
@@ -49,28 +49,32 @@ SOURCES = sorted((REPO / "rtl").glob("*.vhd")) + [REPO / "sim" / "tb_top_level.v
 TESTBENCH = "tb_top_level"
 DEFAULT_CYCLES = 200
 
-# name: (program, exception cycle, ROB tag, discarded instructions, expected
+# name: (program, exception cycle, ROB tag, faulting instruction, expected
 # failure or None[, further testbench generics]). The exception cycle and the
-# ROB tag are the generics of tb_top_level. The discarded instructions are the
-# faulting one and every younger one issued before the flush, as program
-# indices; fetch continues after the last issued instruction. An exception
-# whose tag names no in-flight instruction discards nothing.
+# ROB tag are the generics of tb_top_level. The faulting instruction is the
+# program index of the instruction in that ROB entry, or None if the tag
+# names no in-flight instruction, in which case the exception is ignored.
 EXCEPTION_SCENARIOS = {
-    "example_exception_c6": ("example", 6, 3, (3, 4), None),
-    "example_exception_c7": ("example", 7, 3, (3, 4), None),  # the original testbench
-    "example_exception_c8": ("example", 8, 3, (3, 4), None),
-    "example_exception_c9": ("example", 9, 3, (3, 4), None),
-    "example_exception_tag0_c4": ("example", 4, 0, (0, 1, 2), None),
-    "example_exception_tag0_c6": ("example", 6, 0, (0, 1, 2, 3, 4), None),
-    "example_exception_c7_tag_released": ("example", 7, 3, (3, 4), None, {"EXCEPTION_TAG_HELD": "false"}),
+    "example_exception_c6": ("example", 6, 3, 3, None),
+    "example_exception_c7": ("example", 7, 3, 3, None),  # the original testbench
+    "example_exception_c8": ("example", 8, 3, 3, None),
+    "example_exception_c9": ("example", 9, 3, 3, None),
+    "example_exception_tag0_c4": ("example", 4, 0, 0, None),
+    "example_exception_tag0_c6": ("example", 6, 0, 0, None),
+    "example_exception_c7_tag_released": ("example", 7, 3, 3, None, {"EXCEPTION_TAG_HELD": "false"}),
     # The second cycle of the flag names an entry that the first one discarded.
-    "example_exception_c7_flag_held": ("example", 7, 3, (3, 4), None, {"EXCEPTION_LENGTH": "2"}),
-    "example_exception_tag0_c8": ("example", 8, 0, (), None),
-    "example_exception_tag5_c7": ("example", 7, 5, (), None),
-    "example_exception_tag15_c7": ("example", 7, 15, (), None),
-    "rob_wraparound_exception_c36": ("rob_wraparound", 36, 12, (12, 13, 14), None),
-    "rob_full_exception_c25": ("rob_full", 25, 6, tuple(range(6, 21)), None),
+    "example_exception_c7_flag_held": ("example", 7, 3, 3, None, {"EXCEPTION_LENGTH": "2"}),
+    "example_exception_tag0_c8": ("example", 8, 0, None, None),
+    "example_exception_tag5_c7": ("example", 7, 5, None, None),
+    "example_exception_tag15_c7": ("example", 7, 15, None, None),
+    "rob_wraparound_exception_c36": ("rob_wraparound", 36, 12, 12, None),
+    "rob_full_exception_c25": ("rob_full", 25, 6, 6, None),
+    "exception_handler_c7": ("exception_handler", 7, 3, 3, None, {"HANDLER_ADDR": "8"}),
 }
+
+# Default of the generic HANDLER_ADDR of rtl/top_level.vhd: the last ROM word,
+# which holds HALT in the image of every shorter program.
+DEFAULT_HANDLER_ADDR = assembler.ROM_DEPTH - 1
 
 
 def scenarios():
@@ -133,13 +137,17 @@ def column(text, name):
 def exception_check(words, scenario, writes, text):
     """Compare the final registers and exception_pc against the reference model.
 
-    The reference model runs the program without the discarded instructions.
-    Final contents are compared rather than the write stream, since the
-    exception cycle repeats the last register write (KI-11). An exception
-    that discards nothing must be ignored: no flush and no exception_pc.
+    The reference model runs the instructions older than the faulting one,
+    followed by the exception handler at HANDLER_ADDR up to its HALT. Final
+    contents are compared rather than the write stream, since the exception
+    cycle repeats the last register write (KI-11). An ignored exception must
+    cause no flush and leave exception_pc at 0, and the reference model then
+    runs the whole program.
     """
-    cycle, discarded, xfail = scenario[1], scenario[3], scenario[4]
-    _, expected = assembler.run([w for i, w in enumerate(words) if i not in discarded])
+    cycle, fault, xfail = scenario[1], scenario[3], scenario[4]
+    generics = scenario[5] if len(scenario) > 5 else {}
+    handler = int(generics.get("HANDLER_ADDR", DEFAULT_HANDLER_ADDR))
+    _, expected = assembler.run(words if fault is None else words[:fault] + words[handler:])
     regs = list(trace_vcd.RF_RESET)
     for _, rd, value in writes:
         regs[rd] = value
@@ -148,12 +156,12 @@ def exception_check(words, scenario, writes, text):
     flushes = [tag for tag in column(text, "flush") if tag != "f"]
     if wrong:
         status, note = "FAIL", f"wrong final registers {', '.join(wrong)}"
-    elif not discarded and (flushes or pc != 0):
+    elif fault is None and (flushes or pc != 0):
         status, note = "FAIL", "exception not ignored"
-    elif discarded and pc != min(discarded):
-        status, note = "FAIL", f"exception_pc {pc} instead of {min(discarded)}"
-    elif discarded:
-        status, note = "PASS", f"instructions {', '.join(map(str, discarded))} discarded"
+    elif fault is not None and pc != fault:
+        status, note = "FAIL", f"exception_pc {pc} instead of {fault}"
+    elif fault is not None:
+        status, note = "PASS", f"instruction {fault} faulted, handler at {handler}"
     else:
         status, note = "PASS", "exception ignored"
     note = f"exception on cycle {cycle}: {note}"

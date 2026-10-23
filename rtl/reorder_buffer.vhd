@@ -41,8 +41,8 @@
 -- exception cycle, the ROB still records a result broadcast on the CDB and
 -- discards an instruction that issues in that cycle together with the
 -- younger ones, but it commits no entry. In the following cycle, it ignores
--- a result of a discarded instruction that is still on the CDB. The fetch
--- unit is not redirected (doc/known_issues.md, KI-10).
+-- a result of a discarded instruction that is still on the CDB, and the
+-- fetch unit, which also observes flush_tag, moves to the exception handler.
 --
 -- Names:
 --   pc, issue, instruction  instruction at the issue stage, and whether it issues
