@@ -40,6 +40,7 @@
 --   pc, instruction             instruction presented at the issue stage
 --   ack_*, issue                the presented instruction is accepted by a unit
 --   rob_tail                    ROB entry allocated to the presented instruction
+--   rob_full                    all ROB entries are occupied; issue stalls
 --   rob_rs_*, rob_rt_*          ROB lookup results for the source registers
 --   rf_rs_value, rf_rt_value    register file contents of the source registers
 --   flush_tag                   first discarded ROB entry after an exception
@@ -73,6 +74,7 @@ architecture structural of top_level is
     signal issue          : std_logic;
 
     signal rob_tail     : tag_t;
+    signal rob_full     : std_logic;
     signal rob_rs_tag   : tag_t;
     signal rob_rt_tag   : tag_t;
     signal rob_rs_value : word_t;
@@ -136,6 +138,7 @@ begin
             instruction  => instruction,
             ack          => ack_logical,
             rob_tail     => rob_tail,
+            rob_full     => rob_full,
             rob_rs_tag   => rob_rs_tag,
             rob_rt_tag   => rob_rt_tag,
             rob_rs_value => rob_rs_value,
@@ -163,6 +166,7 @@ begin
             instruction  => instruction,
             ack          => ack_arithmetic,
             rob_tail     => rob_tail,
+            rob_full     => rob_full,
             rob_rs_tag   => rob_rs_tag,
             rob_rt_tag   => rob_rt_tag,
             rob_rs_value => rob_rs_value,
@@ -201,6 +205,7 @@ begin
             issue          => issue,
             instruction    => instruction,
             rob_tail       => rob_tail,
+            rob_full       => rob_full,
             rs_tag         => rob_rs_tag,
             rt_tag         => rob_rt_tag,
             rs_value       => rob_rs_value,

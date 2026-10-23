@@ -8,8 +8,6 @@ Fixing an issue changes the golden traces. Hence, a fix should be followed by a 
 
 **KI-2: The reservation stations ignore all other activity in the flush cycle.** In the cycle after an exception, the stations only release flushed entries. They ignore the CDB, so a station that waits for the broadcast result is never woken up, which deadlocks `example_exception_c6` with the ROB head at entry 1. They also skip the operand fill, the dispatch and the credit return. Since `fu_tag` keeps its previous value instead of returning to `TAG_NONE`, an operation dispatched in the preceding cycle may enter the functional unit a second time (code reading).
 
-**KI-5: The reorder buffer has no full detection.** Issue does not check whether a ROB entry is free, and a full buffer (head equal to tail) cannot be distinguished from an empty one. Overflowing the 15 entries requires many completed but uncommitted instructions, which none of the test programs produces (code reading).
-
 **KI-6: Functional units are not flushed.** Operations of discarded instructions remain in the functional unit pipelines and are still broadcast. Since the ROB reallocates the discarded entries, such a stale result can complete a newly allocated entry or wake up a station that waits for the new instruction (code reading).
 
 **KI-8: Flush ranges are computed inconsistently.** The ROB discards the entries from the faulting one up to `tail - 1`, computed modulo 16, so a tail of 0 discards every entry. The reservation stations compute the same range with ordinary integers, and they treat a faulting tag equal to the tail as "every tag", whereas the ROB treats it as "no entry". These cases require an exception for an entry that is not in flight or a tail of 0, which the tests do not produce (code reading). Note also that `exception_tag` must lie between 0 and 14, since 15 causes an index error in simulation.
@@ -29,3 +27,5 @@ Fixing an issue changes the golden traces. Hence, a fix should be followed by a 
 **KI-12: The ROB lookup searched every entry when the tail was 0.** The bound of the search is now compared as an integer, so a tail of 0 no longer wraps to 15 and released entries are no longer matched as producers of r0; `r0_read_at_tail_wrap` covers the case.
 
 **KI-7: The in-flight counter could undercount.** A dispatch and a grant to the same unit in one cycle now leave the counter unchanged, so it stays exact and never admits an operation into a full pipeline; `inflight_counter_undercount` covers the case.
+
+**KI-5: The reorder buffer had no full detection.** The reorder buffer now keeps a full flag, and the reservation stations accept no instruction while it is set, so an issued instruction can no longer overwrite an occupied entry; `rob_full` covers the case, which random testing found when an old instruction waited at the head behind younger ones.

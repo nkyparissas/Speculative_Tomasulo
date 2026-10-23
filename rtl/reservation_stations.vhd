@@ -46,6 +46,7 @@
 --   PIPELINE_DEPTH  stages of the functional unit, i.e. maximum in-flight operations
 --   ack             the presented instruction is accepted in this cycle
 --   rob_tail        tag of the ROB entry allocated to the presented instruction
+--   rob_full        all ROB entries are occupied, so no instruction can issue
 --   rob_*_tag       ROB lookup: TAG_NONE if the register file is up to date,
 --                   otherwise the youngest ROB entry that writes the register
 --   rob_*_value     ROB lookup: value of that entry, valid if rob_*_valid = '1'
@@ -77,6 +78,7 @@ entity reservation_stations is
         instruction  : in  instr_t;
         ack          : out std_logic;
         rob_tail     : in  tag_t;
+        rob_full     : in  std_logic;
         -- Operand sources, one cycle after issue
         rob_rs_tag   : in  tag_t;
         rob_rt_tag   : in  tag_t;
@@ -143,7 +145,7 @@ begin
     -- so that the stations, the fetch unit and the ROB all act on the same
     -- issue decision in every cycle.
     ack_i <= '1' when instruction(UNIT_FIELD) = UNIT and rst = '0' and flush_tag = TAG_NONE
-                      and any_free(stations) else
+                      and rob_full = '0' and any_free(stations) else
              '0';
     ack <= ack_i;
 

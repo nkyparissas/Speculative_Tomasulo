@@ -34,6 +34,7 @@ entity execution_unit is
         instruction  : in  instr_t;
         ack          : out std_logic;
         rob_tail     : in  tag_t;
+        rob_full     : in  std_logic;
         -- Operand sources, one cycle after issue
         rob_rs_tag   : in  tag_t;
         rob_rt_tag   : in  tag_t;
@@ -74,6 +75,7 @@ begin
             instruction  => instruction,
             ack          => ack,
             rob_tail     => rob_tail,
+            rob_full     => rob_full,
             rob_rs_tag   => rob_rs_tag,
             rob_rt_tag   => rob_rt_tag,
             rob_rs_value => rob_rs_value,

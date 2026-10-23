@@ -64,6 +64,7 @@ entity reorder_buffer is
         issue          : in  std_logic;
         instruction    : in  instr_t;
         rob_tail       : out tag_t;
+        rob_full       : out std_logic;
         -- Operand lookup, one cycle after issue
         rs_tag         : out tag_t;
         rt_tag         : out tag_t;
@@ -117,6 +118,7 @@ architecture rtl of reorder_buffer is
     signal head          : pointer_t     := (others => '0');
     signal tail          : pointer_t     := (others => '0');
     signal flush_tag_reg : tag_t         := TAG_NONE;
+    signal full          : std_logic     := '0';
 
 begin
 
@@ -124,6 +126,8 @@ begin
         -- Producers of rs and rt found by the lookup of step (5).
         variable rs_found, rt_found : boolean;
         variable rs_entry, rt_entry : natural range 0 to ROB_SIZE - 1;
+        -- Whether step (3) commits an entry in this cycle.
+        variable committed : boolean;
 
         -- Records entry i as the producer of rs and/or rt if it writes one of
         -- them. The searches below call it from the oldest to the youngest
@@ -153,6 +157,7 @@ begin
             rt_valid      <= '0';
             exception_pc  <= (others => '0');
             flush_tag_reg <= TAG_NONE;
+            full          <= '0';
             head          <= (others => '0');
             tail          <= (others => '0');
             entries       <= (others => ROB_ENTRY_EMPTY);
@@ -170,10 +175,12 @@ begin
 
         else
             -- (1) Recovery. The tail is taken from the input port again rather
-            -- than from flush_tag_reg (KI-9).
+            -- than from flush_tag_reg (KI-9). The flush has freed entries, so
+            -- the buffer is no longer full.
             if flush_tag_reg /= TAG_NONE then
                 tail          <= unsigned(exception_tag);
                 flush_tag_reg <= TAG_NONE;
+                full          <= '0';
             end if;
 
             -- (2) Writeback.
@@ -184,6 +191,7 @@ begin
 
             -- (3) Commit, either from the head entry or directly from the CDB
             -- when the head's result is being broadcast in this cycle.
+            committed := entries(to_integer(head)).done = '1' or unsigned(cdb_tag) = head;
             if entries(to_integer(head)).done = '1' then
                 commit_we                 <= '1';
                 commit_rd                 <= entries(to_integer(head)).rd;
@@ -200,15 +208,30 @@ begin
                 commit_we <= '0';
             end if;
 
-            -- (4) Allocation, without checking for a free entry (KI-5). The
-            -- value field keeps its contents, which are zero unless a stale
-            -- result was written into the released entry (KI-6).
+            -- (4) Allocation. The reservation stations do not accept an
+            -- instruction while the buffer is full, so the tail entry is free
+            -- whenever issue = '1'. The value field keeps its contents, which
+            -- are zero unless a stale result was written into the released
+            -- entry (doc/known_issues.md, KI-6).
             if issue = '1' then
                 entries(to_integer(tail)).opcode <= instruction(OPCODE_FIELD);
                 entries(to_integer(tail)).pc     <= pc;
                 entries(to_integer(tail)).rd     <= instruction(RD_FIELD);
                 entries(to_integer(tail)).done   <= '0';
                 tail <= next_pointer(tail);
+            end if;
+
+            -- Since head = tail holds both for an empty and for a full buffer,
+            -- the full flag tells them apart: an issue without a commit fills
+            -- the buffer when the tail reaches the head, and a commit without
+            -- an issue frees an entry. With both or neither, the number of
+            -- occupied entries does not change.
+            if issue = '1' and not committed then
+                if next_pointer(tail) = head then
+                    full <= '1';
+                end if;
+            elsif committed and issue = '0' then
+                full <= '0';
             end if;
 
             -- (5) Lookup of the youngest in-flight producer of each source
@@ -271,6 +294,7 @@ begin
     end process;
 
     rob_tail  <= std_logic_vector(tail);
+    rob_full  <= full;
     flush_tag <= flush_tag_reg;
 
 end rtl;
