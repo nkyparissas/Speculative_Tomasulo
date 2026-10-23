@@ -5,7 +5,7 @@
 """Regression and functional tests for the speculative Tomasulo processor.
 
 Every program in programs/*.asm forms one scenario, and EXCEPTION_SCENARIOS
-adds runs of the example program with an exception. For each scenario, the
+adds runs with an exception. For each scenario, the
 runner assembles the program with tools/assembler.py, simulates
 sim/tb_top_level.vhd with GHDL, converts the VCD into a cycle-level trace
 (tests/trace_vcd.py) and performs two checks:
@@ -18,7 +18,9 @@ sim/tb_top_level.vhd with GHDL, converts the VCD into a cycle-level trace
    tools/assembler.py. Without an exception, the register-file writes must
    equal its commit sequence. With an exception, the scenario lists the
    instructions that the exception discards, and the final register contents
-   and exception_pc must equal those of the reference model run without them.
+   and exception_pc must equal those of the reference model run without them;
+   an exception that discards nothing must cause no flush and leave
+   exception_pc at 0.
    Programs with a '; @xfail <reason>' directive, and exception scenarios with
    a reason in EXCEPTION_SCENARIOS, are expected to fail this check until the
    corresponding issue is fixed.
@@ -51,7 +53,8 @@ DEFAULT_CYCLES = 200
 # failure or None[, further testbench generics]). The exception cycle and the
 # ROB tag are the generics of tb_top_level. The discarded instructions are the
 # faulting one and every younger one issued before the flush, as program
-# indices; fetch continues after the last issued instruction.
+# indices; fetch continues after the last issued instruction. An exception
+# whose tag names no in-flight instruction discards nothing.
 EXCEPTION_SCENARIOS = {
     "example_exception_c6": ("example", 6, 3, (3, 4), None),
     "example_exception_c7": ("example", 7, 3, (3, 4), None),  # the original testbench
@@ -60,6 +63,13 @@ EXCEPTION_SCENARIOS = {
     "example_exception_tag0_c4": ("example", 4, 0, (0, 1, 2), None),
     "example_exception_tag0_c6": ("example", 6, 0, (0, 1, 2, 3, 4), None),
     "example_exception_c7_tag_released": ("example", 7, 3, (3, 4), None, {"EXCEPTION_TAG_HELD": "false"}),
+    # The second cycle of the flag names an entry that the first one discarded.
+    "example_exception_c7_flag_held": ("example", 7, 3, (3, 4), None, {"EXCEPTION_LENGTH": "2"}),
+    "example_exception_tag0_c8": ("example", 8, 0, (), None),
+    "example_exception_tag5_c7": ("example", 7, 5, (), None),
+    "example_exception_tag15_c7": ("example", 7, 15, (), None),
+    "rob_wraparound_exception_c36": ("rob_wraparound", 36, 12, (12, 13, 14), None),
+    "rob_full_exception_c25": ("rob_full", 25, 6, tuple(range(6, 21)), None),
 }
 
 
@@ -113,11 +123,11 @@ def functional_check(words, directives, writes):
     return status, note
 
 
-def final_value(text, column):
-    """Return the decimal value of a trace column in the last cycle."""
+def column(text, name):
+    """Return the values of a trace column, one per cycle."""
     table = text.split("\n\n")[0].splitlines()
     rows = [line.split() for line in table[1:] if line.split() and line.split()[0].isdigit()]
-    return int(rows[-1][table[0].split().index(column)])
+    return [row[table[0].split().index(name)] for row in rows]
 
 
 def exception_check(words, scenario, writes, text):
@@ -125,7 +135,8 @@ def exception_check(words, scenario, writes, text):
 
     The reference model runs the program without the discarded instructions.
     Final contents are compared rather than the write stream, since the
-    exception cycle repeats the last register write (KI-11).
+    exception cycle repeats the last register write (KI-11). An exception
+    that discards nothing must be ignored: no flush and no exception_pc.
     """
     cycle, discarded, xfail = scenario[1], scenario[3], scenario[4]
     _, expected = assembler.run([w for i, w in enumerate(words) if i not in discarded])
@@ -133,13 +144,18 @@ def exception_check(words, scenario, writes, text):
     for _, rd, value in writes:
         regs[rd] = value
     wrong = [f"r{r}" for r in range(len(regs)) if regs[r] != expected[r]]
-    pc = final_value(text, "excPC")
+    pc = int(column(text, "excPC")[-1])
+    flushes = [tag for tag in column(text, "flush") if tag != "f"]
     if wrong:
         status, note = "FAIL", f"wrong final registers {', '.join(wrong)}"
-    elif pc != min(discarded):
+    elif not discarded and (flushes or pc != 0):
+        status, note = "FAIL", "exception not ignored"
+    elif discarded and pc != min(discarded):
         status, note = "FAIL", f"exception_pc {pc} instead of {min(discarded)}"
-    else:
+    elif discarded:
         status, note = "PASS", f"instructions {', '.join(map(str, discarded))} discarded"
+    else:
+        status, note = "PASS", "exception ignored"
     note = f"exception on cycle {cycle}: {note}"
     if xfail:
         status = "XFAIL" if status == "FAIL" else "XPASS"

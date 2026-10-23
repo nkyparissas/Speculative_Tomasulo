@@ -29,7 +29,8 @@
 -- cycle, reports that the instruction in ROB entry exception_tag has faulted.
 -- The ROB and the reservation stations then discard that instruction and all
 -- younger ones, and exception_pc reports the program counter of the faulting
--- instruction. Instruction fetch is not redirected, so the program continues
+-- instruction. A request whose tag names no instruction in flight is
+-- ignored. Instruction fetch is not redirected, so the program continues
 -- with the instructions that follow the last issued one.
 --
 -- See doc/known_issues.md for deviations from the intended behaviour, which

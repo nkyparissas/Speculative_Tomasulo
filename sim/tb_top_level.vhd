@@ -19,9 +19,10 @@
 --   ROM_FILE           ROM image loaded by the fetch unit (1024 lines of 19
 --                      bits, as written by tools/assembler.py)
 --   RUN_CYCLES         number of clock cycles to simulate
---   EXCEPTION_CYCLE    cycle on which the ROB samples exception_flag = '1'; the
---                      flag stays high for exactly one cycle, and values below
---                      2 disable the exception
+--   EXCEPTION_CYCLE    first cycle on which the ROB samples exception_flag =
+--                      '1'; values below 2 disable the exception
+--   EXCEPTION_LENGTH   number of cycles for which the flag stays high, each of
+--                      which the ROB samples as an exception request
 --   EXCEPTION_ROB_TAG  ROB tag of the instruction that raises the exception
 --   EXCEPTION_TAG_HELD true if exception_tag keeps its value after the flag
 --                      drops, false if it returns to 0 together with the flag
@@ -48,6 +49,7 @@ entity tb_top_level is
         ROM_FILE           : string   := "rom.data";
         RUN_CYCLES         : positive := 108;
         EXCEPTION_CYCLE    : integer  := 7;
+        EXCEPTION_LENGTH   : positive := 1;
         EXCEPTION_ROB_TAG  : natural  := 3;
         EXCEPTION_TAG_HELD : boolean  := true);
 end tb_top_level;
@@ -97,7 +99,7 @@ begin
             wait for (EXCEPTION_CYCLE - 1) * PERIOD;
             exception_flag <= '1';
             exception_tag  <= std_logic_vector(to_unsigned(EXCEPTION_ROB_TAG, exception_tag'length));
-            wait for PERIOD;
+            wait for EXCEPTION_LENGTH * PERIOD;
             exception_flag <= '0';
             if not EXCEPTION_TAG_HELD then
                 exception_tag <= (others => '0');

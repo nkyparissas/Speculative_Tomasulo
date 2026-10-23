@@ -12,9 +12,9 @@
 -- they commit, which allows an exception to discard younger instructions
 -- without corrupting the architectural register file.
 --
--- In every cycle without an exception, the clocked process performs five
--- steps in a fixed order, and a later step overrides an earlier one where
--- both assign the same signal. (1) Recovery: in the cycle after an
+-- In every cycle without an accepted exception, the clocked process performs
+-- five steps in a fixed order, and a later step overrides an earlier one
+-- where both assign the same signal. (1) Recovery: in the cycle after an
 -- exception, the tail returns to the faulting entry and the flush
 -- notification ends. (2) Writeback: the entry named by the CDB tag stores the
 -- broadcast value and is marked done. (3) Commit: if the head entry is done,
@@ -31,7 +31,10 @@
 -- file's data.
 --
 -- Exceptions are signalled from outside, with exception_flag and the tag of
--- the faulting instruction. In that cycle, the ROB discards the faulting
+-- the faulting instruction. The ROB accepts an exception only if the tag
+-- names an occupied entry, and it ignores a request for any other tag, such
+-- as that of an instruction that has already committed or been discarded.
+-- In the cycle of an accepted exception, the ROB discards the faulting
 -- entry and all younger ones, reports the program counter of the faulting
 -- instruction and publishes its tag on flush_tag, so that the reservation
 -- stations discard the same instructions in the following cycle. In the
@@ -104,17 +107,13 @@ architecture rtl of reorder_buffer is
         end if;
     end function next_pointer;
 
-    -- True if entry i belongs to the discarded range, which starts at the
-    -- faulting entry and ends at tail - 1. Note that tail - 1 is computed
-    -- modulo 16, so a tail of 0 extends the range to every entry (KI-8).
+    -- True if entry i belongs to the range that a flush starting at entry
+    -- first discards, i.e. from first up to, but excluding, the tail. The
+    -- reservation stations and the functional units use the same function,
+    -- so all of them discard the same instructions.
     function flushed(i : natural; first : tag_t; tail : pointer_t) return boolean is
-        constant last : natural := to_integer(tail - 1);
     begin
-        if unsigned(first) <= tail then
-            return i >= to_integer(unsigned(first)) and i <= last;
-        else
-            return i >= to_integer(unsigned(first)) or i <= last;
-        end if;
+        return in_flush_range(std_logic_vector(to_unsigned(i, tag_t'length)), first, std_logic_vector(tail));
     end function flushed;
 
     signal entries       : entry_array_t := (others => ROB_ENTRY_EMPTY);
@@ -135,6 +134,12 @@ begin
         variable cdb_live : boolean;
         -- The tail after an instruction that issues in the exception cycle.
         variable tail_after : pointer_t;
+        -- The occupied entries, from the head up to occupied_end or, if
+        -- occupied_full holds, all of them; and whether an exception is
+        -- accepted in this cycle.
+        variable occupied_end  : pointer_t;
+        variable occupied_full : boolean;
+        variable accepted      : boolean;
 
         -- Records entry i as the producer of rs and/or rt if it writes one of
         -- them. The searches below call it from the oldest to the youngest
@@ -152,6 +157,21 @@ begin
         end procedure match;
     begin
         wait until rising_edge(clk);
+
+        -- An exception is accepted only if its tag names an occupied entry.
+        -- In the cycle after an accepted exception, the entries from
+        -- flush_tag_reg onwards are already free, although step (1) restores
+        -- the tail only at the end of that cycle.
+        if flush_tag_reg /= TAG_NONE then
+            occupied_end  := unsigned(flush_tag_reg);
+            occupied_full := false;
+        else
+            occupied_end  := tail;
+            occupied_full := full = '1';
+        end if;
+        accepted := exception_flag = '1' and (occupied_full or head /= occupied_end)
+                    and in_flush_range(exception_tag, std_logic_vector(head), std_logic_vector(occupied_end));
+
         if rst = '1' then
             commit_we     <= '0';
             commit_rd     <= (others => '0');
@@ -169,7 +189,7 @@ begin
             tail          <= (others => '0');
             entries       <= (others => ROB_ENTRY_EMPTY);
 
-        elsif exception_flag = '1' then
+        elsif accepted then
             -- No entry commits in this cycle, since the faulting entry may be
             -- the head. The commit port and the lookup results keep their
             -- values, so a commit registered in the previous cycle is written

@@ -118,10 +118,10 @@ package tomasulo_pkg is
 
     -- True if a flush that starts at flush_tag discards the instruction with
     -- this tag, i.e. if the tag lies in the circular range from flush_tag up
-    -- to, but excluding, the ROB tail. The reservation stations and the
-    -- functional units use it in the cycle after an exception. If flush_tag
-    -- equals the tail, the range covers every tag, whereas the ROB discards
-    -- no entry in that case (doc/known_issues.md, KI-8).
+    -- to, but excluding, the ROB tail. The ROB uses it in the exception
+    -- cycle, and the reservation stations and the functional units in the
+    -- cycle after. If flush_tag equals the tail, the range covers every tag,
+    -- which happens when an exception names the head of a full buffer.
     function in_flush_range(tag, flush_tag, tail : tag_t) return boolean;
 
 end package tomasulo_pkg;

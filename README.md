@@ -5,7 +5,7 @@ This version was vibecoded by Nick Kyparissas using Claude Opus 5.5. It is based
 
 ![Block diagram of the original project](doc/Speculative_Tomasulo.png)
 
-The processor issues one instruction per cycle in program order into the reservation stations of two execution units, executes instructions out of order as soon as their operands are available, and commits them in program order from a 15-entry reorder buffer. The logical unit (OR, AND, NOT) has two reservation stations and a two-stage pipeline, while the arithmetic unit (ADD, SUB, shift left) has three stations and a three-stage pipeline. Both units return their results over a single common data bus. Exceptions are signalled from outside the processor, and the reorder buffer then discards the faulting instruction and all younger ones. There are no loads, stores or branches.
+The processor issues one instruction per cycle in program order into the reservation stations of two execution units, executes instructions out of order as soon as their operands are available, and commits them in program order from a 15-entry reorder buffer. The logical unit (OR, AND, NOT) has two reservation stations and a two-stage pipeline, while the arithmetic unit (ADD, SUB, shift left) has three stations and a three-stage pipeline. Both units return their results over a single common data bus. Exceptions are signalled from outside the processor, and the reorder buffer then discards the faulting instruction and all younger ones; a request for a tag that names no instruction in flight is ignored. There are no loads, stores or branches.
 
 The original coursework only required behavioural simulation, and its code was synthesized in Vivado 2018.1. This version is written in VHDL-93 for Vivado as well. It has been simulated with GHDL in VHDL-93 and VHDL-2008 and passes GHDL's synthesis front-end, but it has not been run in Vivado yet. The deviations from the intended behaviour that are currently known, all inherited from the original design, are listed in [doc/known_issues.md](doc/known_issues.md).
 
@@ -56,10 +56,10 @@ After editing `programs/example.asm`, regenerate the default image with `python3
 
 ## Tests with GHDL
 
-`tests/run_tests.py` requires GHDL (any backend) and Python 3.8 or later. It simulates every program in `programs/` and three runs of the example program with an exception, and it performs two checks per run:
+`tests/run_tests.py` requires GHDL (any backend) and Python 3.8 or later. It simulates every program in `programs/` and the runs with an exception listed in `EXCEPTION_SCENARIOS`, and it performs two checks per run:
 
 1. **Regression:** the cycle-level trace of the run must match `tests/golden/<scenario>.trace`. The golden traces record the behaviour of the original design, so this check detects any change in behaviour, down to individual cycles.
-2. **Functional:** the results must match the reference model in `tools/assembler.py`. For runs without an exception, the register writes must equal its commit sequence. For runs with an exception, `EXCEPTION_SCENARIOS` in `tests/run_tests.py` lists the instructions that the exception discards, and the final registers and `exception_pc` must equal those of the reference model run without them. A program with a `; @xfail <reason>` line, or an exception scenario with a reason in that table, is expected to fail this check because of a known issue (XFAIL); if it passes, the run reports XPASS and fails, so that the expected failure gets removed.
+2. **Functional:** the results must match the reference model in `tools/assembler.py`. For runs without an exception, the register writes must equal its commit sequence. For runs with an exception, `EXCEPTION_SCENARIOS` in `tests/run_tests.py` lists the instructions that the exception discards, and the final registers and `exception_pc` must equal those of the reference model run without them; an exception that discards nothing must leave no trace of a flush. A program with a `; @xfail <reason>` line, or an exception scenario with a reason in that table, is expected to fail this check because of a known issue (XFAIL); if it passes, the run reports XPASS and fails, so that the expected failure gets removed.
 
 ```
 python3 tests/run_tests.py                     # all scenarios
@@ -76,6 +76,6 @@ A new test only requires a new file in `programs/`, followed by `--bless` to rec
 2. Add `sim/tb_top_level.vhd` to the simulation sources and set `tb_top_level` as the simulation top.
 3. After launching the behavioural simulation, run `source <repository>/sim/waves.tcl` in the Tcl console to display the main signals, grouped by pipeline stage.
 
-The testbench generics select the program (`ROM_FILE`, default `rom.data`), the simulated length (`RUN_CYCLES`) and an optional exception (`EXCEPTION_CYCLE` and `EXCEPTION_ROB_TAG`; an `EXCEPTION_CYCLE` below 2 disables it; `EXCEPTION_TAG_HELD` selects whether `exception_tag` keeps its value after the flag). Their default values reproduce the original testbench, which raises an exception for ROB entry 3 on cycle 7. To simulate another program, add its ROM image to the simulation sources and set `ROM_FILE` to the image's file name.
+The testbench generics select the program (`ROM_FILE`, default `rom.data`), the simulated length (`RUN_CYCLES`) and an optional exception (`EXCEPTION_CYCLE` and `EXCEPTION_ROB_TAG`; an `EXCEPTION_CYCLE` below 2 disables it; `EXCEPTION_LENGTH` sets the number of cycles for which the flag stays high; `EXCEPTION_TAG_HELD` selects whether `exception_tag` keeps its value after the flag). Their default values reproduce the original testbench, which raises an exception for ROB entry 3 on cycle 7. To simulate another program, add its ROM image to the simulation sources and set `ROM_FILE` to the image's file name.
 
 The report of the original coursework project (in Greek) is available in [doc/Report_(Greek).pdf](<doc/Report_(Greek).pdf>).
