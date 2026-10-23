@@ -28,7 +28,7 @@ COLUMNS = {
     "instruction": ("dut", "instruction[18:0]", "raw"),
     "ackA": ("dut", "ack_arithmetic", "raw"),
     "ackL": ("dut", "ack_logical", "raw"),
-    "head": ("dut.u_rob", "head[3:0]", "dec"),
+    "head": ("dut.u_rob", "head", "dec"),
     "tail": ("dut", "rob_tail[3:0]", "dec"),
     "rsTag": ("dut", "rob_rs_tag[3:0]", "hex"),
     "rtTag": ("dut", "rob_rt_tag[3:0]", "hex"),

@@ -39,18 +39,20 @@ add_wave -radix hex $dut/rf_rs_value
 add_wave -radix hex $dut/rf_rt_value
 
 add_wave_divider "LOGICAL UNIT"
-add_wave $dut/u_logical/u_rs/stations
-add_wave $dut/u_logical/u_rs/fill_pending
-add_wave $dut/u_logical/u_rs/in_flight
-add_wave -radix unsigned $dut/u_logical/u_fu/tags
-add_wave -radix hex $dut/u_logical/u_fu/values
+add_wave $dut/u_logical_rs/stations
+add_wave $dut/u_logical_rs/fill_pending
+add_wave $dut/dispatch_logical
+add_wave $dut/ready_logical
+add_wave -radix unsigned $dut/u_logical_fu/tags
+add_wave -radix hex $dut/u_logical_fu/values
 
 add_wave_divider "ARITHMETIC UNIT"
-add_wave $dut/u_arithmetic/u_rs/stations
-add_wave $dut/u_arithmetic/u_rs/fill_pending
-add_wave $dut/u_arithmetic/u_rs/in_flight
-add_wave -radix unsigned $dut/u_arithmetic/u_fu/tags
-add_wave -radix hex $dut/u_arithmetic/u_fu/values
+add_wave $dut/u_arithmetic_rs/stations
+add_wave $dut/u_arithmetic_rs/fill_pending
+add_wave $dut/dispatch_arithmetic
+add_wave $dut/ready_arithmetic
+add_wave -radix unsigned $dut/u_arithmetic_fu/tags
+add_wave -radix hex $dut/u_arithmetic_fu/values
 
 add_wave_divider "COMMON DATA BUS"
 add_wave $dut/cdb_req_logical

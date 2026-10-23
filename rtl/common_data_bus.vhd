@@ -49,27 +49,27 @@ architecture rtl of common_data_bus is
 begin
 
     process
+        variable winner : unit_t;
     begin
         wait until rising_edge(clk);
+        -- The logical unit wins if it requests alone, or if both request and
+        -- the arithmetic unit won the previous grant.
+        if req_logical = '1' and (req_arithmetic = '0' or last_winner = UNIT_ARITHMETIC) then
+            winner := UNIT_LOGICAL;
+        elsif req_arithmetic = '1' then
+            winner := UNIT_ARITHMETIC;
+        else
+            winner := GRANT_NONE;
+        end if;
+
         if rst = '1' then
             grant_reg   <= GRANT_NONE;
             last_winner <= UNIT_ARITHMETIC;
-        elsif req_arithmetic = '1' and req_logical = '1' then
-            if last_winner = UNIT_ARITHMETIC then
-                grant_reg   <= UNIT_LOGICAL;
-                last_winner <= UNIT_LOGICAL;
-            else
-                grant_reg   <= UNIT_ARITHMETIC;
-                last_winner <= UNIT_ARITHMETIC;
-            end if;
-        elsif req_arithmetic = '1' then
-            grant_reg   <= UNIT_ARITHMETIC;
-            last_winner <= UNIT_ARITHMETIC;
-        elsif req_logical = '1' then
-            grant_reg   <= UNIT_LOGICAL;
-            last_winner <= UNIT_LOGICAL;
         else
-            grant_reg <= GRANT_NONE;
+            grant_reg <= winner;
+            if winner /= GRANT_NONE then
+                last_winner <= winner;
+            end if;
         end if;
     end process;
 

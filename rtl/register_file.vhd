@@ -11,12 +11,9 @@
 -- registered, so their values reach the reservation stations one cycle after
 -- issue, together with the results of the reorder buffer's operand lookup.
 --
--- A read of the register that is currently on the commit port returns the
--- commit value instead of the stored one (write-first bypass), so that a
--- result written in the same cycle is not read stale. The bypass compares
--- addresses only and ignores commit_we. This is harmless, because the commit
--- port keeps presenting the last committed value, which the register already
--- holds (doc/known_issues.md, KI-11).
+-- A read of the register that the commit port writes in the same cycle
+-- returns the commit value instead of the stored one (write-first bypass),
+-- so that the result is not read stale.
 --
 -- The processor has no load instructions. Therefore, reset initialises
 -- registers r0 to r10 with their own index to provide input operands, and it
@@ -65,6 +62,14 @@ architecture rtl of register_file is
 begin
 
     process
+        -- Contents of a register, including a value written in this cycle.
+        impure function read_register(addr : reg_addr_t) return word_t is
+        begin
+            if commit_we = '1' and commit_rd = addr then
+                return commit_value;
+            end if;
+            return regs(to_integer(unsigned(addr)));
+        end function read_register;
     begin
         wait until rising_edge(clk);
         if rst = '1' then
@@ -73,18 +78,8 @@ begin
             if commit_we = '1' then
                 regs(to_integer(unsigned(commit_rd))) <= commit_value;
             end if;
-
-            if commit_rd = rs_addr then
-                rs_value <= commit_value;
-            else
-                rs_value <= regs(to_integer(unsigned(rs_addr)));
-            end if;
-
-            if commit_rd = rt_addr then
-                rt_value <= commit_value;
-            else
-                rt_value <= regs(to_integer(unsigned(rt_addr)));
-            end if;
+            rs_value <= read_register(rs_addr);
+            rt_value <= read_register(rt_addr);
         end if;
     end process;
 

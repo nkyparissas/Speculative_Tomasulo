@@ -6,6 +6,8 @@ Fixing an issue changes the golden traces. Hence, a fix should be followed by a 
 
 ## Fixed issues
 
+Each entry describes the fix as it was made. A later simplification of the RTL replaced the in-flight counter of the reservation stations (KI-7) with a ready signal that each functional unit derives from its own occupancy, replaced the discard marks of the functional units (KI-6) with the removal of discarded operations, and gave every entry of the reorder buffer a busy bit, which now determines when the buffer is full (KI-5), which exceptions are accepted (KI-8) and which entries the lookup searches (KI-12).
+
 **KI-3: A wakeup in the cycle after issue was lost.** The operand fill now takes a result that the CDB broadcasts in the fill cycle directly from the bus instead of storing the stale tag from the lookup, so `missed_wakeup` completes.
 
 **KI-4: The ROB lookup let the CDB take precedence over the second operand.** The lookup now searches the ROB for the youngest in-flight producer of both source registers and takes a value from the CDB only when that producer is the entry being broadcast; `cdb_lookup_second_operand` and `cdb_lookup_younger_producer` cover both cases.

@@ -10,43 +10,45 @@
 -- the index of an entry serves as the tag under which the result of its
 -- instruction is broadcast. Results thus remain speculative in the ROB until
 -- they commit, which allows an exception to discard younger instructions
--- without corrupting the architectural register file.
+-- without corrupting the architectural register file. A busy bit marks the
+-- entries that hold an instruction; in particular, the buffer is full when
+-- the entry at the tail is busy.
 --
--- In every cycle without an accepted exception, the clocked process performs
--- five steps in a fixed order, and a later step overrides an earlier one
--- where both assign the same signal. (1) Recovery: in the cycle after an
--- exception, the tail returns to the faulting entry and the flush
--- notification ends. (2) Writeback: the entry named by the CDB tag stores the
--- broadcast value and is marked done. (3) Commit: if the head entry is done,
--- or receives its result from the CDB in this very cycle, its value goes to
--- the register file through the registered commit port, the entry is
--- released and the head advances. (4) Allocation: an issued instruction
--- occupies the tail entry, and the tail advances. (5) Lookup: for each source
--- register of the instruction presented at the issue stage, the ROB reports
--- the youngest in-flight entry that writes the register, or TAG_NONE if the
--- register file is up to date. The search only considers the entries between
--- head and tail, and a producer whose result the CDB broadcasts in this cycle
--- supplies its value from the bus. The registered results reach the
+-- In every cycle, the clocked process performs six steps in a fixed order,
+-- and a later step overrides an earlier one where both assign the same
+-- signal. (1) Recovery: in the cycle after an exception, the tail returns to
+-- the faulting entry and the flush notification ends. (2) Writeback: the
+-- busy entry named by the CDB tag stores the broadcast value and is marked
+-- done. A result for an entry that is not busy belongs to an instruction
+-- that an exception has just discarded, and it is ignored. (3) Commit: if the
+-- head entry is done, or receives its result from the CDB in this very
+-- cycle, its value goes to the register file through the registered commit
+-- port, the entry is released and the head advances. (4) Allocation: an
+-- issued instruction occupies the tail entry, and the tail advances.
+-- (5) Exception, described below. (6) Lookup: for each source register of
+-- the instruction presented at the issue stage, the ROB reports the youngest
+-- busy entry that writes the register, or TAG_NONE if the register file is
+-- up to date, and a producer whose result the CDB broadcasts in this cycle
+-- supplies its value from the bus. These registered results reach the
 -- reservation stations one cycle after issue, together with the register
 -- file's data.
 --
 -- Exceptions are signalled from outside, with exception_flag and the tag of
 -- the faulting instruction. The ROB accepts an exception only if the tag
--- names an occupied entry, and it ignores a request for any other tag, such
--- as that of an instruction that has already committed or been discarded.
--- In the cycle of an accepted exception, the ROB discards the faulting
--- entry and all younger ones, reports the program counter of the faulting
--- instruction and publishes its tag on flush_tag, so that the reservation
--- stations discard the same instructions in the following cycle. In the
--- exception cycle, the ROB still records a result broadcast on the CDB and
--- discards an instruction that issues in that cycle together with the
--- younger ones, but it commits no entry. In the following cycle, it ignores
--- a result of a discarded instruction that is still on the CDB, and the
--- fetch unit, which also observes flush_tag, moves to the exception handler.
+-- names a busy entry, and it ignores a request for any other tag, such as
+-- that of an instruction that has already committed or been discarded. In
+-- the cycle of an accepted exception, no entry commits, since the faulting
+-- entry may be the head. Instead, step (5) discards the faulting entry and
+-- all younger ones, including an instruction allocated in step (4), reports
+-- the program counter of the faulting instruction and publishes its tag on
+-- flush_tag. In the following cycle, the reservation stations and the
+-- functional units discard the same range, from flush_tag up to rob_tail,
+-- and the fetch unit, which also observes flush_tag, moves to the exception
+-- handler.
 --
 -- Names:
 --   pc, issue, instruction  instruction at the issue stage, and whether it issues
---   rob_tail                tag of the next free entry, i.e. of the next instruction
+--   rob_tail, rob_full      tag of the next free entry, and whether it is busy
 --   rs_*, rt_*              lookup results for the source registers of that instruction
 --   cdb_tag, cdb_value      result broadcast on the common data bus
 --   commit_*                registered write port of the register file
@@ -94,85 +96,52 @@ end reorder_buffer;
 
 architecture rtl of reorder_buffer is
 
-    type entry_array_t is array (ROB_SIZE - 1 downto 0) of rob_entry_t;
+    type entry_array_t is array (0 to ROB_SIZE - 1) of rob_entry_t;
 
-    subtype pointer_t is unsigned(tag_t'range);
-
-    function next_pointer(p : pointer_t) return pointer_t is
+    function next_index(i : natural) return natural is
     begin
-        if p = ROB_SIZE - 1 then
-            return (others => '0');
+        if i = ROB_SIZE - 1 then
+            return 0;
         else
-            return p + 1;
+            return i + 1;
         end if;
-    end function next_pointer;
+    end function next_index;
 
-    -- True if entry i belongs to the range that a flush starting at entry
-    -- first discards, i.e. from first up to, but excluding, the tail. The
-    -- reservation stations and the functional units use the same function,
-    -- so all of them discard the same instructions.
-    function flushed(i : natural; first : tag_t; tail : pointer_t) return boolean is
+    function to_tag(i : natural) return tag_t is
     begin
-        return in_flush_range(std_logic_vector(to_unsigned(i, tag_t'length)), first, std_logic_vector(tail));
-    end function flushed;
+        return std_logic_vector(to_unsigned(i, tag_t'length));
+    end function to_tag;
 
     signal entries       : entry_array_t := (others => ROB_ENTRY_EMPTY);
-    signal head          : pointer_t     := (others => '0');
-    signal tail          : pointer_t     := (others => '0');
-    signal flush_tag_reg : tag_t         := TAG_NONE;
-    signal full          : std_logic     := '0';
+    signal head          : natural range 0 to ROB_SIZE - 1 := 0;
+    signal tail          : natural range 0 to ROB_SIZE - 1 := 0;
+    signal flush_tag_reg : tag_t := TAG_NONE;
+
+    -- True if the tag names a busy entry; false for TAG_NONE.
+    impure function busy(tag : tag_t) return boolean is
+    begin
+        return tag /= TAG_NONE and entries(to_integer(unsigned(tag))).busy = '1';
+    end function busy;
 
 begin
 
     process
-        -- Producers of rs and rt found by the lookup of step (5).
+        variable accepted : boolean;
+        variable new_tail : natural range 0 to ROB_SIZE - 1;
+        variable i        : natural range 0 to ROB_SIZE - 1;
+        -- Producers of rs and rt found by the lookup of step (6).
         variable rs_found, rt_found : boolean;
         variable rs_entry, rt_entry : natural range 0 to ROB_SIZE - 1;
-        -- Whether step (3) commits an entry in this cycle.
-        variable committed : boolean;
-        -- The CDB carries a result that may still complete an entry.
-        variable cdb_live : boolean;
-        -- The tail after an instruction that issues in the exception cycle.
-        variable tail_after : pointer_t;
-        -- The occupied entries, from the head up to occupied_end or, if
-        -- occupied_full holds, all of them; and whether an exception is
-        -- accepted in this cycle.
-        variable occupied_end  : pointer_t;
-        variable occupied_full : boolean;
-        variable accepted      : boolean;
-
-        -- Records entry i as the producer of rs and/or rt if it writes one of
-        -- them. The searches below call it from the oldest to the youngest
-        -- entry, so the youngest producer is recorded.
-        procedure match(i : natural) is
-        begin
-            if entries(i).rd = instruction(RS_FIELD) then
-                rs_found := true;
-                rs_entry := i;
-            end if;
-            if entries(i).rd = instruction(RT_FIELD) then
-                rt_found := true;
-                rt_entry := i;
-            end if;
-        end procedure match;
     begin
         wait until rising_edge(clk);
-
-        -- An exception is accepted only if its tag names an occupied entry.
-        -- In the cycle after an accepted exception, the entries from
-        -- flush_tag_reg onwards are already free, although step (1) restores
-        -- the tail only at the end of that cycle.
-        if flush_tag_reg /= TAG_NONE then
-            occupied_end  := unsigned(flush_tag_reg);
-            occupied_full := false;
-        else
-            occupied_end  := tail;
-            occupied_full := full = '1';
-        end if;
-        accepted := exception_flag = '1' and (occupied_full or head /= occupied_end)
-                    and in_flush_range(exception_tag, std_logic_vector(head), std_logic_vector(occupied_end));
+        accepted := exception_flag = '1' and busy(exception_tag);
 
         if rst = '1' then
+            entries       <= (others => ROB_ENTRY_EMPTY);
+            head          <= 0;
+            tail          <= 0;
+            flush_tag_reg <= TAG_NONE;
+            exception_pc  <= (others => '0');
             commit_we     <= '0';
             commit_rd     <= (others => '0');
             commit_value  <= (others => '0');
@@ -182,150 +151,90 @@ begin
             rt_value      <= (others => '0');
             rs_valid      <= '0';
             rt_valid      <= '0';
-            exception_pc  <= (others => '0');
-            flush_tag_reg <= TAG_NONE;
-            full          <= '0';
-            head          <= (others => '0');
-            tail          <= (others => '0');
-            entries       <= (others => ROB_ENTRY_EMPTY);
-
-        elsif accepted then
-            -- No entry commits in this cycle, since the faulting entry may be
-            -- the head. The write enable drops, whereas the other commit
-            -- outputs and the lookup results keep their values.
-            commit_we     <= '0';
-            exception_pc  <= entries(to_integer(unsigned(exception_tag))).pc;
-            flush_tag_reg <= exception_tag;
-
-            -- A result broadcast in this cycle is recorded as in step (2).
-            if cdb_tag /= TAG_NONE then
-                entries(to_integer(unsigned(cdb_tag))).value <= cdb_value;
-                entries(to_integer(unsigned(cdb_tag))).done  <= '1';
-            end if;
-
-            -- An instruction that issues in this cycle is younger than the
-            -- faulting one and is therefore discarded with it: the tail moves
-            -- past it, so that its entry lies in the discarded range and the
-            -- reservation stations, which use this tail in the next cycle,
-            -- discard it as well.
-            if issue = '1' then
-                tail_after := next_pointer(tail);
-            else
-                tail_after := tail;
-            end if;
-            tail <= tail_after;
-            for i in 0 to ROB_SIZE - 1 loop
-                if flushed(i, exception_tag, tail_after) then
-                    entries(i) <= ROB_ENTRY_EMPTY;
-                end if;
-            end loop;
 
         else
-            -- (1) Recovery. The tail returns to the faulting entry, whose tag
-            -- flush_tag_reg latched in the exception cycle. The flush has freed
-            -- entries, so the buffer is no longer full.
+            -- (1) Recovery.
             if flush_tag_reg /= TAG_NONE then
-                tail          <= unsigned(flush_tag_reg);
+                tail          <= to_integer(unsigned(flush_tag_reg));
                 flush_tag_reg <= TAG_NONE;
-                full          <= '0';
             end if;
 
-            -- In the recovery cycle, the CDB may still carry the result of an
-            -- instruction discarded in the exception cycle, which must
-            -- neither complete its freed entry nor commit.
-            cdb_live := cdb_tag /= TAG_NONE
-                        and not (flush_tag_reg /= TAG_NONE
-                                 and flushed(to_integer(unsigned(cdb_tag)), flush_tag_reg, tail));
-
             -- (2) Writeback.
-            if cdb_live then
+            if busy(cdb_tag) then
                 entries(to_integer(unsigned(cdb_tag))).value <= cdb_value;
                 entries(to_integer(unsigned(cdb_tag))).done  <= '1';
             end if;
 
             -- (3) Commit, either from the head entry or directly from the CDB
             -- when the head's result is being broadcast in this cycle.
-            committed := entries(to_integer(head)).done = '1' or (cdb_live and unsigned(cdb_tag) = head);
-            if entries(to_integer(head)).done = '1' then
-                commit_we                 <= '1';
-                commit_rd                 <= entries(to_integer(head)).rd;
-                commit_value              <= entries(to_integer(head)).value;
-                entries(to_integer(head)) <= ROB_ENTRY_EMPTY;
-                head                      <= next_pointer(head);
-            elsif cdb_live and unsigned(cdb_tag) = head then
-                commit_we                 <= '1';
-                commit_rd                 <= entries(to_integer(head)).rd;
-                commit_value              <= cdb_value;
-                entries(to_integer(head)) <= ROB_ENTRY_EMPTY;
-                head                      <= next_pointer(head);
-            else
-                commit_we <= '0';
-            end if;
-
-            -- (4) Allocation. The reservation stations do not accept an
-            -- instruction while the buffer is full, so the tail entry is free
-            -- whenever issue = '1'. The value field keeps its contents, which
-            -- are zero for a released entry.
-            if issue = '1' then
-                entries(to_integer(tail)).opcode <= instruction(OPCODE_FIELD);
-                entries(to_integer(tail)).pc     <= pc;
-                entries(to_integer(tail)).rd     <= instruction(RD_FIELD);
-                entries(to_integer(tail)).done   <= '0';
-                tail <= next_pointer(tail);
-            end if;
-
-            -- Since head = tail holds both for an empty and for a full buffer,
-            -- the full flag tells them apart: an issue without a commit fills
-            -- the buffer when the tail reaches the head, and a commit without
-            -- an issue frees an entry. With both or neither, the number of
-            -- occupied entries does not change.
-            if issue = '1' and not committed then
-                if next_pointer(tail) = head then
-                    full <= '1';
+            commit_we <= '0';
+            if not accepted and entries(head).busy = '1'
+               and (entries(head).done = '1' or cdb_tag = to_tag(head)) then
+                commit_we <= '1';
+                commit_rd <= entries(head).rd;
+                if entries(head).done = '1' then
+                    commit_value <= entries(head).value;
+                else
+                    commit_value <= cdb_value;
                 end if;
-            elsif committed and issue = '0' then
-                full <= '0';
+                entries(head) <= ROB_ENTRY_EMPTY;
+                head          <= next_index(head);
             end if;
 
-            -- (5) Lookup of the youngest in-flight producer of each source
-            -- register.
+            -- (4) Allocation. The reservation stations accept no instruction
+            -- while the buffer is full, so the tail entry is free whenever
+            -- issue = '1'.
+            new_tail := tail;
+            if issue = '1' then
+                entries(tail) <= (busy  => '1',
+                                  pc    => pc,
+                                  rd    => instruction(RD_FIELD),
+                                  value => (others => '0'),
+                                  done  => '0');
+                new_tail := next_index(tail);
+                tail     <= new_tail;
+            end if;
+
+            -- (5) Exception: discard the entries from the faulting one up to
+            -- the new tail.
+            if accepted then
+                for e in entries'range loop
+                    if in_flush_range(to_tag(e), exception_tag, to_tag(new_tail)) then
+                        entries(e) <= ROB_ENTRY_EMPTY;
+                    end if;
+                end loop;
+                flush_tag_reg <= exception_tag;
+                exception_pc  <= entries(to_integer(unsigned(exception_tag))).pc;
+            end if;
+
+            -- (6) Lookup. The search visits the busy entries from the oldest
+            -- to the youngest, so the youngest producer is recorded last.
             rs_found := false;
             rt_found := false;
-            if head < tail then
-                for i in 0 to ROB_SIZE - 1 loop
-                    if i >= to_integer(head) and i < to_integer(tail) then
-                        match(i);
+            i := head;
+            for age in 0 to ROB_SIZE - 1 loop
+                if entries(i).busy = '1' then
+                    if entries(i).rd = instruction(RS_FIELD) then
+                        rs_found := true;
+                        rs_entry := i;
                     end if;
-                end loop;
-            elsif head /= tail then
-                -- The occupied entries wrap around: search from the head to
-                -- the end of the buffer, then from the start up to the entry
-                -- before the tail. The bound is compared as an integer, so a
-                -- tail of 0 leaves the second loop empty instead of wrapping
-                -- to 15 in 4-bit arithmetic.
-                for i in 0 to ROB_SIZE - 1 loop
-                    if i >= to_integer(head) then
-                        match(i);
+                    if entries(i).rd = instruction(RT_FIELD) then
+                        rt_found := true;
+                        rt_entry := i;
                     end if;
-                end loop;
-                for i in 0 to ROB_SIZE - 1 loop
-                    if i < to_integer(tail) then
-                        match(i);
-                    end if;
-                end loop;
-            end if;
+                end if;
+                i := next_index(i);
+            end loop;
 
-            -- A producer whose result the CDB broadcasts in this cycle is not
-            -- marked done before the next edge, so its value comes from the
-            -- bus. The value outputs keep their previous contents when no
-            -- producer is found, since only the tags signal a match.
+            -- The value outputs keep their previous contents when no producer
+            -- is found, since only the tags signal a match.
             rs_tag   <= TAG_NONE;
             rt_tag   <= TAG_NONE;
             rs_valid <= '0';
             rt_valid <= '0';
             if rs_found then
-                rs_tag <= std_logic_vector(to_unsigned(rs_entry, tag_t'length));
-                if unsigned(cdb_tag) = rs_entry then
+                rs_tag <= to_tag(rs_entry);
+                if cdb_tag = to_tag(rs_entry) then
                     rs_value <= cdb_value;
                     rs_valid <= '1';
                 else
@@ -334,8 +243,8 @@ begin
                 end if;
             end if;
             if rt_found then
-                rt_tag <= std_logic_vector(to_unsigned(rt_entry, tag_t'length));
-                if unsigned(cdb_tag) = rt_entry then
+                rt_tag <= to_tag(rt_entry);
+                if cdb_tag = to_tag(rt_entry) then
                     rt_value <= cdb_value;
                     rt_valid <= '1';
                 else
@@ -346,8 +255,8 @@ begin
         end if;
     end process;
 
-    rob_tail  <= std_logic_vector(tail);
-    rob_full  <= full;
+    rob_tail  <= to_tag(tail);
+    rob_full  <= entries(tail).busy;
     flush_tag <= flush_tag_reg;
 
 end rtl;

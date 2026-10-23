@@ -49,10 +49,13 @@
 --   rob_rs_*, rob_rt_*          ROB lookup results for the source registers
 --   rf_rs_value, rf_rt_value    register file contents of the source registers
 --   flush_tag                   first discarded ROB entry after an exception
+--   ready_*, dispatch_*         operation dispatched from the reservation
+--                               stations to the functional unit of each unit
 --   cdb_req_*, tag_*, result_*  bus requests and results of the functional units
 --   cdb_grant                   owner of the common data bus
 --   cdb_tag, cdb_value          result broadcast on the common data bus
 --   commit_*                    committed result written to the register file
+--   redirect                    fetch continues at the exception handler
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -74,6 +77,7 @@ architecture structural of top_level is
 
     signal pc          : pc_t;
     signal instruction : instr_t;
+    signal redirect    : std_logic;
 
     signal ack_logical    : std_logic;
     signal ack_arithmetic : std_logic;
@@ -90,7 +94,11 @@ architecture structural of top_level is
     signal rf_rs_value  : word_t;
     signal rf_rt_value  : word_t;
     signal flush_tag    : tag_t;
-    signal redirect     : std_logic;
+
+    signal ready_logical       : std_logic;
+    signal ready_arithmetic    : std_logic;
+    signal dispatch_logical    : operation_t;
+    signal dispatch_arithmetic : operation_t;
 
     signal cdb_req_logical    : std_logic;
     signal cdb_req_arithmetic : std_logic;
@@ -140,11 +148,12 @@ begin
             rs_value     => rf_rs_value,
             rt_value     => rf_rt_value);
 
-    u_logical : entity work.execution_unit
+    -- Logical unit: two reservation stations and a two-stage pipeline.
+
+    u_logical_rs : entity work.reservation_stations
         generic map (
-            UNIT           => UNIT_LOGICAL,
-            NUM_STATIONS   => 2,
-            PIPELINE_DEPTH => 2)
+            UNIT         => UNIT_LOGICAL,
+            NUM_STATIONS => 2)
         port map (
             clk          => clk,
             rst          => rst,
@@ -163,16 +172,31 @@ begin
             flush_tag    => flush_tag,
             cdb_tag      => cdb_tag,
             cdb_value    => cdb_value,
-            cdb_grant    => cdb_grant,
-            cdb_req      => cdb_req_logical,
-            result_tag   => tag_logical,
-            result       => result_logical);
+            fu_ready     => ready_logical,
+            fu_op        => dispatch_logical);
 
-    u_arithmetic : entity work.execution_unit
+    u_logical_fu : entity work.functional_unit
         generic map (
-            UNIT           => UNIT_ARITHMETIC,
-            NUM_STATIONS   => 3,
-            PIPELINE_DEPTH => 3)
+            UNIT           => UNIT_LOGICAL,
+            PIPELINE_DEPTH => 2)
+        port map (
+            clk       => clk,
+            rst       => rst,
+            op        => dispatch_logical,
+            ready     => ready_logical,
+            cdb_req   => cdb_req_logical,
+            cdb_grant => cdb_grant,
+            flush_tag => flush_tag,
+            rob_tail  => rob_tail,
+            tag_out   => tag_logical,
+            result    => result_logical);
+
+    -- Arithmetic unit: three reservation stations and a three-stage pipeline.
+
+    u_arithmetic_rs : entity work.reservation_stations
+        generic map (
+            UNIT         => UNIT_ARITHMETIC,
+            NUM_STATIONS => 3)
         port map (
             clk          => clk,
             rst          => rst,
@@ -191,10 +215,24 @@ begin
             flush_tag    => flush_tag,
             cdb_tag      => cdb_tag,
             cdb_value    => cdb_value,
-            cdb_grant    => cdb_grant,
-            cdb_req      => cdb_req_arithmetic,
-            result_tag   => tag_arithmetic,
-            result       => result_arithmetic);
+            fu_ready     => ready_arithmetic,
+            fu_op        => dispatch_arithmetic);
+
+    u_arithmetic_fu : entity work.functional_unit
+        generic map (
+            UNIT           => UNIT_ARITHMETIC,
+            PIPELINE_DEPTH => 3)
+        port map (
+            clk       => clk,
+            rst       => rst,
+            op        => dispatch_arithmetic,
+            ready     => ready_arithmetic,
+            cdb_req   => cdb_req_arithmetic,
+            cdb_grant => cdb_grant,
+            flush_tag => flush_tag,
+            rob_tail  => rob_tail,
+            tag_out   => tag_arithmetic,
+            result    => result_arithmetic);
 
     u_cdb : entity work.common_data_bus
         port map (

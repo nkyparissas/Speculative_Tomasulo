@@ -37,6 +37,7 @@
 --   HALT_WORD        canonical HALT instruction (all ones)
 --   execute          result of an operation, i.e. the behaviour of both ALUs
 --   in_flush_range   whether a flush discards the instruction with a given tag
+--   operation_t      operation dispatched to a functional unit
 --   rs_entry_t       contents of one reservation station
 --   rob_entry_t      contents of one ROB entry
 
@@ -61,7 +62,6 @@ package tomasulo_pkg is
     -- Instruction fields: unit | fop | rd | rs | rt.
     subtype UNIT_FIELD   is natural range 18 downto 17;
     subtype FOP_FIELD    is natural range 16 downto 15;
-    subtype OPCODE_FIELD is natural range 18 downto 15;  -- unit and fop together
     subtype RD_FIELD     is natural range 14 downto 10;
     subtype RS_FIELD     is natural range 9 downto 5;
     subtype RT_FIELD     is natural range 4 downto 0;
@@ -76,6 +76,20 @@ package tomasulo_pkg is
     -- rs shifted left by one. Function code "11" yields zero in both units.
     function execute(unit : unit_t; fop : fop_t; a, b : word_t) return word_t;
 
+    -- Operation dispatched from a reservation station to its functional unit.
+    -- The tag is TAG_NONE in cycles without a dispatch.
+    type operation_t is record
+        tag  : tag_t;
+        fop  : fop_t;
+        a, b : word_t;
+    end record;
+
+    constant OPERATION_NONE : operation_t := (
+        tag => TAG_NONE,
+        fop => (others => '0'),
+        a   => (others => '0'),
+        b   => (others => '0'));
+
     -- A source operand is available when its q field equals TAG_NONE, in
     -- which case v holds its value; otherwise, q names the ROB entry that
     -- will produce it.
@@ -89,8 +103,8 @@ package tomasulo_pkg is
         q2   : tag_t;
     end record;
 
-    -- A released station holds all zeros, so its q fields read as tag 0.
-    -- This is harmless because every step checks busy before using them.
+    -- A released station holds all zeros, so its q fields read as tag 0 and
+    -- the station cannot dispatch before its operands have been filled in.
     constant RS_ENTRY_EMPTY : rs_entry_t := (
         busy => '0',
         fop  => (others => '0'),
@@ -101,27 +115,28 @@ package tomasulo_pkg is
         q2   => (others => '0'));
 
     type rob_entry_t is record
-        opcode : std_logic_vector(3 downto 0);  -- unit and fop, for reference only
-        pc     : pc_t;                          -- reported when the instruction faults
-        rd     : reg_addr_t;                    -- destination register
-        value  : word_t;                        -- result, valid when done = '1'
-        done   : std_logic;                     -- the result has been broadcast
+        busy  : std_logic;   -- the entry holds an instruction
+        pc    : pc_t;        -- reported when the instruction faults
+        rd    : reg_addr_t;  -- destination register
+        value : word_t;      -- result, valid when done = '1'
+        done  : std_logic;   -- the result has been broadcast
     end record;
 
-    -- A released entry holds all zeros, so its rd field reads as r0.
     constant ROB_ENTRY_EMPTY : rob_entry_t := (
-        opcode => (others => '0'),
-        pc     => (others => '0'),
-        rd     => (others => '0'),
-        value  => (others => '0'),
-        done   => '0');
+        busy  => '0',
+        pc    => (others => '0'),
+        rd    => (others => '0'),
+        value => (others => '0'),
+        done  => '0');
 
     -- True if a flush that starts at flush_tag discards the instruction with
     -- this tag, i.e. if the tag lies in the circular range from flush_tag up
-    -- to, but excluding, the ROB tail. The ROB uses it in the exception
-    -- cycle, and the reservation stations and the functional units in the
-    -- cycle after. If flush_tag equals the tail, the range covers every tag,
-    -- which happens when an exception names the head of a full buffer.
+    -- to, but excluding, the ROB tail. If flush_tag equals the tail, the range
+    -- covers every tag, which happens when an exception names the head of a
+    -- full buffer. Without a flush (flush_tag = TAG_NONE) or an instruction
+    -- (tag = TAG_NONE), the result is false. The ROB uses the function in the
+    -- exception cycle, and the reservation stations and the functional units
+    -- in the cycle after.
     function in_flush_range(tag, flush_tag, tail : tag_t) return boolean;
 
 end package tomasulo_pkg;
@@ -152,7 +167,7 @@ package body tomasulo_pkg is
         constant first : integer := to_integer(unsigned(flush_tag));
         constant stop  : integer := to_integer(unsigned(tail));
     begin
-        if t > ROB_SIZE - 1 then
+        if tag = TAG_NONE or flush_tag = TAG_NONE then
             return false;
         elsif first < stop then
             return t >= first and t < stop;
