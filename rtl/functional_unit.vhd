@@ -15,10 +15,10 @@
 -- The pipeline is elastic. While the last stage waits for the bus, the stages
 -- behind it still advance into empty slots, so the unit can buffer up to
 -- PIPELINE_DEPTH results. An operation that arrives while every stage is
--- occupied is lost; the in-flight counter of the reservation stations is
--- meant to prevent this situation (doc/known_issues.md, KI-7). A flush does
--- not affect the pipeline, so results of discarded instructions are still
--- broadcast (KI-6).
+-- occupied would be lost; the in-flight counter of the reservation stations
+-- prevents this, since it never admits more than PIPELINE_DEPTH operations.
+-- A flush does not affect the pipeline, so results of discarded instructions
+-- are still broadcast (doc/known_issues.md, KI-6).
 --
 -- Since the arbiter of the CDB registers its decision, the unit requests the
 -- bus one cycle in advance: it requests when the last stage holds a result

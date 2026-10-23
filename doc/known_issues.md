@@ -12,8 +12,6 @@ Fixing an issue changes the golden traces. Hence, a fix should be followed by a 
 
 **KI-6: Functional units are not flushed.** Operations of discarded instructions remain in the functional unit pipelines and are still broadcast. Since the ROB reallocates the discarded entries, such a stale result can complete a newly allocated entry or wake up a station that waits for the new instruction (code reading).
 
-**KI-7: The in-flight counter can undercount.** When a reservation station dispatches an operation in the same cycle in which the CDB grants the bus to its unit, the decrement overrides the increment, so the counter ends one lower than the number of operations in the pipeline. The functional unit silently drops an operation that arrives while every stage is occupied, which the counter is meant to prevent (code reading).
-
 **KI-8: Flush ranges are computed inconsistently.** The ROB discards the entries from the faulting one up to `tail - 1`, computed modulo 16, so a tail of 0 discards every entry. The reservation stations compute the same range with ordinary integers, and they treat a faulting tag equal to the tail as "every tag", whereas the ROB treats it as "no entry". These cases require an exception for an entry that is not in flight or a tail of 0, which the tests do not produce (code reading). Note also that `exception_tag` must lie between 0 and 14, since 15 causes an index error in simulation.
 
 **KI-9: The tail is restored from the input port.** In the cycle after an exception, the ROB moves its tail back to `exception_tag` as it appears on the port in that cycle, rather than to the tag latched in the exception cycle. The result is correct only if the source holds `exception_tag` stable for two cycles, as the testbench does (code reading).
@@ -29,3 +27,5 @@ Fixing an issue changes the golden traces. Hence, a fix should be followed by a 
 **KI-4: The ROB lookup let the CDB take precedence over the second operand.** The lookup now searches the ROB for the youngest in-flight producer of both source registers and takes a value from the CDB only when that producer is the entry being broadcast; `cdb_lookup_second_operand` and `cdb_lookup_younger_producer` cover both cases.
 
 **KI-12: The ROB lookup searched every entry when the tail was 0.** The bound of the search is now compared as an integer, so a tail of 0 no longer wraps to 15 and released entries are no longer matched as producers of r0; `r0_read_at_tail_wrap` covers the case.
+
+**KI-7: The in-flight counter could undercount.** A dispatch and a grant to the same unit in one cycle now leave the counter unchanged, so it stays exact and never admits an operation into a full pipeline; `inflight_counter_undercount` covers the case.

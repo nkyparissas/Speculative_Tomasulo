@@ -31,13 +31,14 @@
 -- assign the same field in the same cycle, the later step takes effect. In
 -- particular, the operand fill overrides a wakeup of the same station, which
 -- is why the fill itself takes a value that the CDB broadcasts in that cycle,
--- and the credit return overrides the increment of a simultaneous dispatch
--- (doc/known_issues.md, KI-7). These priorities are part of the verified
--- behaviour, so the steps must keep their order.
+-- and the credit return overrides the increment of a simultaneous dispatch,
+-- which is why it keeps the count unchanged in that case. These priorities
+-- are part of the verified behaviour, so the steps must keep their order.
 --
 -- While the ROB reports a flush (flush_tag /= TAG_NONE), the process releases
 -- every station whose tag lies in the circular range from flush_tag up to the
--- ROB tail, and it performs none of the regular steps in that cycle (KI-2).
+-- ROB tail, and it performs none of the regular steps in that cycle
+-- (doc/known_issues.md, KI-2).
 --
 -- Names:
 --   UNIT            execution unit served, also its CDB grant code
@@ -257,9 +258,15 @@ begin
                 fu_tag <= TAG_NONE;
             end if;
 
-            -- (5) Credit return: a result of this unit occupies the CDB.
+            -- (5) Credit return: a result of this unit occupies the CDB. If an
+            -- operation was dispatched in the same cycle, one operation enters
+            -- the pipeline as another one leaves, so the count stays as it was.
             if cdb_grant = UNIT and in_flight /= 0 then
-                in_flight <= in_flight - 1;
+                if found then
+                    in_flight <= in_flight;
+                else
+                    in_flight <= in_flight - 1;
+                end if;
             end if;
         end if;
     end process;
