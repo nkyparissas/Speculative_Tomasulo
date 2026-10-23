@@ -13,7 +13,7 @@
 -- generics configure one instance per execution unit; the processor uses
 -- three stations for the arithmetic unit and two for the logical unit.
 --
--- In every cycle, the clocked process performs five steps in a fixed order.
+-- In every cycle, the clocked process performs five regular steps in order.
 -- (1) Issue: if the presented instruction belongs to UNIT and a station is
 -- free (ack = '1'), the lowest free station records the function code and
 -- the tag of the instruction's ROB entry, which is the current ROB tail.
@@ -35,10 +35,11 @@
 -- which is why it keeps the count unchanged in that case. These priorities
 -- are part of the verified behaviour, so the steps must keep their order.
 --
--- While the ROB reports a flush (flush_tag /= TAG_NONE), the process releases
--- every station whose tag lies in the circular range from flush_tag up to the
--- ROB tail, and it performs none of the regular steps in that cycle
--- (doc/known_issues.md, KI-2).
+-- While the ROB reports a flush (flush_tag /= TAG_NONE), a sixth step
+-- releases every station whose tag lies in the circular range from flush_tag
+-- up to the ROB tail and cancels its pending operand fill. These stations
+-- take part in no other step in that cycle, whereas all other stations
+-- proceed as usual. No instruction issues during a flush, since ack is low.
 --
 -- Names:
 --   UNIT            execution unit served, also its CDB grant code
@@ -104,6 +105,7 @@ end reservation_stations;
 architecture rtl of reservation_stations is
 
     type station_array_t is array (NUM_STATIONS - 1 downto 0) of rs_entry_t;
+    type flag_array_t    is array (NUM_STATIONS - 1 downto 0) of boolean;
 
     function any_free(stations : station_array_t) return boolean is
         variable free : boolean := false;
@@ -119,7 +121,7 @@ architecture rtl of reservation_stations is
     -- True if a station with this tag belongs to the flushed instructions,
     -- i.e. to the circular range that starts at flush_tag and ends before the
     -- tail. If flush_tag equals the tail, the range covers every tag, whereas
-    -- the ROB discards no entry in that case (KI-8).
+    -- the ROB discards no entry in that case (doc/known_issues.md, KI-8).
     function flushed(tag, flush_tag, tail : tag_t) return boolean is
         constant t     : integer := to_integer(unsigned(tag));
         constant first : integer := to_integer(unsigned(flush_tag));
@@ -150,7 +152,8 @@ begin
     ack <= ack_i;
 
     process
-        variable found : boolean;
+        variable found   : boolean;
+        variable discard : flag_array_t;
     begin
         wait until rising_edge(clk);
         if rst = '1' then
@@ -162,16 +165,15 @@ begin
             fu_a         <= (others => '0');
             fu_b         <= (others => '0');
 
-        elsif flush_tag /= TAG_NONE then
-            -- Note that fill_pending, in_flight and fu_tag keep their values (KI-2).
+        else
+            -- Stations of instructions that the ROB discards in this cycle;
+            -- step (6) releases them, and they take part in no other step.
             for i in stations'range loop
-                if flushed(stations(i).tag, flush_tag, rob_tail) then
-                    stations(i) <= RS_ENTRY_EMPTY;
-                end if;
+                discard(i) := flush_tag /= TAG_NONE and flushed(stations(i).tag, flush_tag, rob_tail);
             end loop;
 
-        else
-            -- (1) Issue into the lowest free station.
+            -- (1) Issue into the lowest free station. During a flush, ack_i is
+            -- low, so no instruction issues.
             if instruction(UNIT_FIELD) = UNIT and ack_i = '1' then
                 found := false;
                 for i in 0 to NUM_STATIONS - 1 loop
@@ -204,7 +206,7 @@ begin
             -- of step (2), it takes such a value from the CDB itself.
             found := false;
             for i in 0 to NUM_STATIONS - 1 loop
-                if not found and fill_pending(i) = '1' then
+                if not found and fill_pending(i) = '1' and not discard(i) then
                     if rob_rs_tag /= TAG_NONE then
                         stations(i).v1 <= rob_rs_value;
                         if rob_rs_valid = '1' then
@@ -244,7 +246,7 @@ begin
             found := false;
             if in_flight < PIPELINE_DEPTH then
                 for i in 0 to NUM_STATIONS - 1 loop
-                    if not found and stations(i).busy = '1'
+                    if not found and stations(i).busy = '1' and not discard(i)
                        and stations(i).q1 = TAG_NONE and stations(i).q2 = TAG_NONE then
                         fu_tag      <= stations(i).tag;
                         fu_fop      <= stations(i).fop;
@@ -270,6 +272,15 @@ begin
                     in_flight <= in_flight - 1;
                 end if;
             end if;
+
+            -- (6) Flush: release the discarded stations and cancel their
+            -- pending operand fill.
+            for i in stations'range loop
+                if discard(i) then
+                    stations(i)     <= RS_ENTRY_EMPTY;
+                    fill_pending(i) <= '0';
+                end if;
+            end loop;
         end if;
     end process;
 

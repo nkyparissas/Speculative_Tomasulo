@@ -53,7 +53,7 @@ DEFAULT_CYCLES = 200
 # younger one issued before the flush, as program indices; fetch continues
 # after the last issued instruction.
 EXCEPTION_SCENARIOS = {
-    "example_exception_c6": ("example", 6, 3, (3, 4), "KI-2"),
+    "example_exception_c6": ("example", 6, 3, (3, 4), None),
     "example_exception_c7": ("example", 7, 3, (3, 4), None),  # the original testbench
     "example_exception_c8": ("example", 8, 3, (3, 4), None),
 }
