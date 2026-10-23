@@ -14,10 +14,14 @@ sim/tb_top_level.vhd with GHDL, converts the VCD into a cycle-level trace
    The golden traces record the cycle-exact behaviour of the original design,
    including its known issues (doc/known_issues.md), so any difference reveals
    a behavioural change.
-2. Functional (scenarios without an exception): the register-file writes must
-   match the commit sequence of the reference model in tools/assembler.py.
-   Programs with a '; @xfail <reason>' directive are expected to fail this
-   check until the corresponding issue is fixed.
+2. Functional: the results must match the reference model in
+   tools/assembler.py. Without an exception, the register-file writes must
+   equal its commit sequence. With an exception, the scenario lists the
+   instructions that the exception discards, and the final register contents
+   and exception_pc must equal those of the reference model run without them.
+   Programs with a '; @xfail <reason>' directive, and exception scenarios with
+   a reason in EXCEPTION_SCENARIOS, are expected to fail this check until the
+   corresponding issue is fixed.
 
 The run fails on any regression difference, functional failure or unexpected
 functional pass. Build products are written to tests/build/.
@@ -43,18 +47,22 @@ SOURCES = sorted((REPO / "rtl").glob("*.vhd")) + [REPO / "sim" / "tb_top_level.v
 TESTBENCH = "tb_top_level"
 DEFAULT_CYCLES = 200
 
-# name: (program, exception cycle, ROB tag); see the generics of tb_top_level.
+# name: (program, exception cycle, ROB tag, discarded instructions, expected
+# failure or None). The exception cycle and the ROB tag are the generics of
+# tb_top_level. The discarded instructions are the faulting one and every
+# younger one issued before the flush, as program indices; fetch continues
+# after the last issued instruction.
 EXCEPTION_SCENARIOS = {
-    "example_exception_c6": ("example", 6, 3),
-    "example_exception_c7": ("example", 7, 3),  # the original testbench
-    "example_exception_c8": ("example", 8, 3),
+    "example_exception_c6": ("example", 6, 3, (3, 4), "KI-2"),
+    "example_exception_c7": ("example", 7, 3, (3, 4), None),  # the original testbench
+    "example_exception_c8": ("example", 8, 3, (3, 4), None),
 }
 
 
 def scenarios():
     """Return {name: (program, exception cycle or None, exception tag)}."""
     result = {p.stem: (p.stem, None, 0) for p in sorted((REPO / "programs").glob("*.asm"))}
-    result.update(EXCEPTION_SCENARIOS)
+    result.update({name: scenario[:3] for name, scenario in EXCEPTION_SCENARIOS.items()})
     return result
 
 
@@ -97,6 +105,40 @@ def functional_check(words, directives, writes):
     if "xfail" in directives:
         status = "XFAIL" if status == "FAIL" else "XPASS"
         note += f" (expected to fail: {directives['xfail']})"
+    return status, note
+
+
+def final_value(text, column):
+    """Return the decimal value of a trace column in the last cycle."""
+    table = text.split("\n\n")[0].splitlines()
+    rows = [line.split() for line in table[1:] if line.split() and line.split()[0].isdigit()]
+    return int(rows[-1][table[0].split().index(column)])
+
+
+def exception_check(words, scenario, writes, text):
+    """Compare the final registers and exception_pc against the reference model.
+
+    The reference model runs the program without the discarded instructions.
+    Final contents are compared rather than the write stream, since the
+    exception cycle repeats the last register write (KI-11).
+    """
+    _, cycle, _, discarded, xfail = scenario
+    _, expected = assembler.run([w for i, w in enumerate(words) if i not in discarded])
+    regs = list(trace_vcd.RF_RESET)
+    for _, rd, value in writes:
+        regs[rd] = value
+    wrong = [f"r{r}" for r in range(len(regs)) if regs[r] != expected[r]]
+    pc = final_value(text, "excPC")
+    if wrong:
+        status, note = "FAIL", f"wrong final registers {', '.join(wrong)}"
+    elif pc != min(discarded):
+        status, note = "FAIL", f"exception_pc {pc} instead of {min(discarded)}"
+    else:
+        status, note = "PASS", f"instructions {', '.join(map(str, discarded))} discarded"
+    note = f"exception on cycle {cycle}: {note}"
+    if xfail:
+        status = "XFAIL" if status == "FAIL" else "XPASS"
+        note += f" (expected to fail: {xfail})"
     return status, note
 
 
@@ -160,7 +202,7 @@ def main():
         if exception_cycle is None:
             functional, note = functional_check(words, directives, writes)
         else:
-            functional, note = "-", f"exception at ROB tag {exception_tag} on cycle {exception_cycle}"
+            functional, note = exception_check(words, EXCEPTION_SCENARIOS[name], writes, text)
         failed |= regression in ("FAIL", "MISSING") or functional in ("FAIL", "XPASS")
         print(f"{name:24s} regression {regression:8s} functional {functional:6s} {note}")
 

@@ -59,7 +59,7 @@ After editing `programs/example.asm`, regenerate the default image with `python3
 `tests/run_tests.py` requires GHDL (any backend) and Python 3.8 or later. It simulates every program in `programs/` and three runs of the example program with an exception, and it performs two checks per run:
 
 1. **Regression:** the cycle-level trace of the run must match `tests/golden/<scenario>.trace`. The golden traces record the behaviour of the original design, so this check detects any change in behaviour, down to individual cycles.
-2. **Functional:** for runs without an exception, the register writes must match the results of the reference model in `tools/assembler.py`. A program with a `; @xfail <reason>` line is expected to fail this check because of a known issue (XFAIL); if it passes, the run reports XPASS and fails, so that the directive gets removed.
+2. **Functional:** the results must match the reference model in `tools/assembler.py`. For runs without an exception, the register writes must equal its commit sequence. For runs with an exception, `EXCEPTION_SCENARIOS` in `tests/run_tests.py` lists the instructions that the exception discards, and the final registers and `exception_pc` must equal those of the reference model run without them. A program with a `; @xfail <reason>` line, or an exception scenario with a reason in that table, is expected to fail this check because of a known issue (XFAIL); if it passes, the run reports XPASS and fails, so that the expected failure gets removed.
 
 ```
 python3 tests/run_tests.py                     # all scenarios

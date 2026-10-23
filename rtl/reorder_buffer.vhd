@@ -34,9 +34,11 @@
 -- the faulting instruction. In that cycle, the ROB discards the faulting
 -- entry and all younger ones, reports the program counter of the faulting
 -- instruction and publishes its tag on flush_tag, so that the reservation
--- stations discard the same instructions in the following cycle. The ROB
--- performs none of the regular steps in the exception cycle
--- (doc/known_issues.md, KI-1), and the fetch unit is not redirected (KI-10).
+-- stations discard the same instructions in the following cycle. In the
+-- exception cycle, the ROB still records a result broadcast on the CDB and
+-- discards an instruction that issues in that cycle together with the
+-- younger ones, but it commits no entry. The fetch unit is not redirected
+-- (doc/known_issues.md, KI-10).
 --
 -- Names:
 --   pc, issue, instruction  instruction at the issue stage, and whether it issues
@@ -128,6 +130,8 @@ begin
         variable rs_entry, rt_entry : natural range 0 to ROB_SIZE - 1;
         -- Whether step (3) commits an entry in this cycle.
         variable committed : boolean;
+        -- The tail after an instruction that issues in the exception cycle.
+        variable tail_after : pointer_t;
 
         -- Records entry i as the producer of rs and/or rt if it writes one of
         -- them. The searches below call it from the oldest to the youngest
@@ -163,12 +167,32 @@ begin
             entries       <= (others => ROB_ENTRY_EMPTY);
 
         elsif exception_flag = '1' then
-            -- The commit port and the lookup results keep their values, so a
-            -- commit registered in the previous cycle is written twice (KI-11).
+            -- No entry commits in this cycle, since the faulting entry may be
+            -- the head. The commit port and the lookup results keep their
+            -- values, so a commit registered in the previous cycle is written
+            -- twice (KI-11).
             exception_pc  <= entries(to_integer(unsigned(exception_tag))).pc;
             flush_tag_reg <= exception_tag;
+
+            -- A result broadcast in this cycle is recorded as in step (2).
+            if cdb_tag /= TAG_NONE then
+                entries(to_integer(unsigned(cdb_tag))).value <= cdb_value;
+                entries(to_integer(unsigned(cdb_tag))).done  <= '1';
+            end if;
+
+            -- An instruction that issues in this cycle is younger than the
+            -- faulting one and is therefore discarded with it: the tail moves
+            -- past it, so that its entry lies in the discarded range and the
+            -- reservation stations, which use this tail in the next cycle,
+            -- discard it as well.
+            if issue = '1' then
+                tail_after := next_pointer(tail);
+            else
+                tail_after := tail;
+            end if;
+            tail <= tail_after;
             for i in 0 to ROB_SIZE - 1 loop
-                if flushed(i, exception_tag, tail) then
+                if flushed(i, exception_tag, tail_after) then
                     entries(i) <= ROB_ENTRY_EMPTY;
                 end if;
             end loop;
