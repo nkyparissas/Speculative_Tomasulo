@@ -48,10 +48,10 @@ TESTBENCH = "tb_top_level"
 DEFAULT_CYCLES = 200
 
 # name: (program, exception cycle, ROB tag, discarded instructions, expected
-# failure or None). The exception cycle and the ROB tag are the generics of
-# tb_top_level. The discarded instructions are the faulting one and every
-# younger one issued before the flush, as program indices; fetch continues
-# after the last issued instruction.
+# failure or None[, further testbench generics]). The exception cycle and the
+# ROB tag are the generics of tb_top_level. The discarded instructions are the
+# faulting one and every younger one issued before the flush, as program
+# indices; fetch continues after the last issued instruction.
 EXCEPTION_SCENARIOS = {
     "example_exception_c6": ("example", 6, 3, (3, 4), None),
     "example_exception_c7": ("example", 7, 3, (3, 4), None),  # the original testbench
@@ -59,6 +59,7 @@ EXCEPTION_SCENARIOS = {
     "example_exception_c9": ("example", 9, 3, (3, 4), None),
     "example_exception_tag0_c4": ("example", 4, 0, (0, 1, 2), None),
     "example_exception_tag0_c6": ("example", 6, 0, (0, 1, 2, 3, 4), None),
+    "example_exception_c7_tag_released": ("example", 7, 3, (3, 4), None, {"EXCEPTION_TAG_HELD": "false"}),
 }
 
 
@@ -85,9 +86,10 @@ def build(build_dir, sources, flags):
             and ghdl(["-m", *flags, f"--workdir={work}", TESTBENCH], build_dir, log))
 
 
-def simulate(build_dir, flags, rom, vcd, cycles, exception_cycle, exception_tag):
+def simulate(build_dir, flags, rom, vcd, cycles, exception_cycle, exception_tag, extra=None):
     generics = [f"-gROM_FILE={rom}", f"-gRUN_CYCLES={cycles}",
                 f"-gEXCEPTION_CYCLE={exception_cycle}", f"-gEXCEPTION_ROB_TAG={exception_tag}"]
+    generics += [f"-g{name}={value}" for name, value in (extra or {}).items()]
     return ghdl(["-r", *flags, f"--workdir={build_dir / 'work'}", TESTBENCH, *generics,
                  f"--vcd={vcd}", "--ieee-asserts=disable-at-0"], build_dir, vcd.with_suffix(".log"))
 
@@ -125,7 +127,7 @@ def exception_check(words, scenario, writes, text):
     Final contents are compared rather than the write stream, since the
     exception cycle repeats the last register write (KI-11).
     """
-    _, cycle, _, discarded, xfail = scenario
+    cycle, discarded, xfail = scenario[1], scenario[3], scenario[4]
     _, expected = assembler.run([w for i, w in enumerate(words) if i not in discarded])
     regs = list(trace_vcd.RF_RESET)
     for _, rd, value in writes:
@@ -179,8 +181,9 @@ def main():
         rom, vcd = BUILD / f"{name}.data", BUILD / f"{name}.vcd"
         assembler.write_rom(words, rom)
         cycles = int(directives.get("cycles", DEFAULT_CYCLES))
+        extra = EXCEPTION_SCENARIOS[name][5] if len(EXCEPTION_SCENARIOS.get(name, ())) > 5 else None
         if not simulate(BUILD, flags, rom, vcd, cycles,
-                        -1 if exception_cycle is None else exception_cycle, exception_tag):
+                        -1 if exception_cycle is None else exception_cycle, exception_tag, extra):
             print(f"{name:24s} ERROR       simulation failed, see {vcd.with_suffix('.log')}")
             failed = True
             continue

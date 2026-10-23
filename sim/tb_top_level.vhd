@@ -23,6 +23,8 @@
 --                      flag stays high for exactly one cycle, and values below
 --                      2 disable the exception
 --   EXCEPTION_ROB_TAG  ROB tag of the instruction that raises the exception
+--   EXCEPTION_TAG_HELD true if exception_tag keeps its value after the flag
+--                      drops, false if it returns to 0 together with the flag
 --
 -- The default values reproduce the testbench of the original project, which
 -- raises an exception for ROB entry 3 on cycle 7.
@@ -43,10 +45,11 @@ use ieee.numeric_std.all;
 
 entity tb_top_level is
     generic (
-        ROM_FILE          : string   := "rom.data";
-        RUN_CYCLES        : positive := 108;
-        EXCEPTION_CYCLE   : integer  := 7;
-        EXCEPTION_ROB_TAG : natural  := 3);
+        ROM_FILE           : string   := "rom.data";
+        RUN_CYCLES         : positive := 108;
+        EXCEPTION_CYCLE    : integer  := 7;
+        EXCEPTION_ROB_TAG  : natural  := 3;
+        EXCEPTION_TAG_HELD : boolean  := true);
 end tb_top_level;
 
 architecture tb of tb_top_level is
@@ -96,6 +99,9 @@ begin
             exception_tag  <= std_logic_vector(to_unsigned(EXCEPTION_ROB_TAG, exception_tag'length));
             wait for PERIOD;
             exception_flag <= '0';
+            if not EXCEPTION_TAG_HELD then
+                exception_tag <= (others => '0');
+            end if;
         end if;
 
         if now < (RUN_CYCLES + 1) * PERIOD then

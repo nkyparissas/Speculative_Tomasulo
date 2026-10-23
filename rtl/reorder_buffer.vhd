@@ -201,11 +201,11 @@ begin
             end loop;
 
         else
-            -- (1) Recovery. The tail is taken from the input port again rather
-            -- than from flush_tag_reg (KI-9). The flush has freed entries, so
-            -- the buffer is no longer full.
+            -- (1) Recovery. The tail returns to the faulting entry, whose tag
+            -- flush_tag_reg latched in the exception cycle. The flush has freed
+            -- entries, so the buffer is no longer full.
             if flush_tag_reg /= TAG_NONE then
-                tail          <= unsigned(exception_tag);
+                tail          <= unsigned(flush_tag_reg);
                 flush_tag_reg <= TAG_NONE;
                 full          <= '0';
             end if;

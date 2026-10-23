@@ -76,6 +76,6 @@ A new test only requires a new file in `programs/`, followed by `--bless` to rec
 2. Add `sim/tb_top_level.vhd` to the simulation sources and set `tb_top_level` as the simulation top.
 3. After launching the behavioural simulation, run `source <repository>/sim/waves.tcl` in the Tcl console to display the main signals, grouped by pipeline stage.
 
-The testbench generics select the program (`ROM_FILE`, default `rom.data`), the simulated length (`RUN_CYCLES`) and an optional exception (`EXCEPTION_CYCLE` and `EXCEPTION_ROB_TAG`; an `EXCEPTION_CYCLE` below 2 disables it). Their default values reproduce the original testbench, which raises an exception for ROB entry 3 on cycle 7. To simulate another program, add its ROM image to the simulation sources and set `ROM_FILE` to the image's file name.
+The testbench generics select the program (`ROM_FILE`, default `rom.data`), the simulated length (`RUN_CYCLES`) and an optional exception (`EXCEPTION_CYCLE` and `EXCEPTION_ROB_TAG`; an `EXCEPTION_CYCLE` below 2 disables it; `EXCEPTION_TAG_HELD` selects whether `exception_tag` keeps its value after the flag). Their default values reproduce the original testbench, which raises an exception for ROB entry 3 on cycle 7. To simulate another program, add its ROM image to the simulation sources and set `ROM_FILE` to the image's file name.
 
 The report of the original coursework project (in Greek) is available in [doc/Report_(Greek).pdf](<doc/Report_(Greek).pdf>).
