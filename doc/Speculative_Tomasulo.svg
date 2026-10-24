@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="761" height="574" viewBox="27 0 761 574">
+  <title>Speculative Tomasulo-based Processor</title>
+  <desc>Block diagram of hardware-based speculation: Tomasulo's algorithm with a reorder buffer.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 L 2.5 5 Z" fill="#000"/>
+    </marker>
+    <style>
+      .serif { font-family: 'Liberation Serif', 'Times New Roman', Times, serif; font-weight: bold; }
+      .sans  { font-family: 'Liberation Sans', Arial, Helvetica, sans-serif; }
+      .wire  { fill: none; stroke: #000; stroke-width: 1.3; }
+      .arrow { fill: none; stroke: #000; stroke-width: 1.3; marker-end: url(#arrow); }
+      .box   { fill: #fff; stroke: #000; stroke-width: 1.3; }
+      .row   { fill: none; stroke: #000; stroke-width: 1; }
+      .shadow { fill: #444; }
+    </style>
+  </defs>
+
+  <rect x="27" y="0" width="761" height="574" fill="#fff"/>
+  <rect x="35" y="8" width="745" height="558" fill="none" stroke="#000" stroke-width="2"/>
+
+  <!-- Title and summary -->
+  <text class="serif" x="211" y="62" font-size="42" text-anchor="middle">Hardware-Based</text>
+  <text class="serif" x="211" y="113" font-size="42" text-anchor="middle">Speculation</text>
+
+  <rect x="56" y="140" width="224" height="47" fill="#fff" stroke="#27358f" stroke-width="1.6"/>
+  <text class="serif" x="72" y="160" font-size="15">Speculative Execution +</text>
+  <text class="serif" x="76" y="181" font-size="15">Tomasulo’s Algorithm</text>
+
+  <rect x="55" y="197" width="242" height="30" fill="#fff" stroke="#555" stroke-width="1.6"/>
+  <text class="serif" x="62" y="218" font-size="18">= Speculative Tomasulo</text>
+
+  <g class="sans" font-size="15">
+    <text x="58" y="278">In this project:</text>
+    <text x="58" y="298">* Dummy ALUs</text>
+    <text x="68" y="318">( Fixed-Point Arithmetic &amp;</text>
+    <text x="78" y="337">Logical ALUs, Pipelined )</text>
+    <text x="58" y="357">* Exception-handling ROB</text>
+    <text x="58" y="377">* No Load/Store Queue yet</text>
+  </g>
+
+  <!-- Shadows -->
+  <rect class="shadow" x="532" y="66" width="140" height="117"/>
+  <rect class="shadow" x="406" y="173" width="85" height="117"/>
+  <rect class="shadow" x="620" y="233" width="81" height="59"/>
+  <rect class="shadow" x="311" y="411" width="102" height="32"/>
+  <rect class="shadow" x="506" y="411" width="104" height="21"/>
+  <rect class="shadow" x="323" y="471" width="69" height="17"/>
+  <rect class="shadow" x="528" y="471" width="69" height="17"/>
+
+  <!-- Reorder buffer -->
+  <rect class="box" x="523" y="57" width="140" height="117"/>
+  <path class="row" d="M 523 76.5 H 663 M 523 96 H 663 M 523 115.5 H 663 M 523 135 H 663 M 523 154.5 H 663"/>
+  <text class="serif" x="416" y="33" font-size="16.5">Commit or Retirement</text>
+  <text class="serif" x="608" y="29" font-size="12">(In Order)</text>
+  <text class="sans" x="498" y="50" font-size="13">Reorder buffer</text>
+  <text class="serif" x="620" y="53" font-size="12">FIFO</text>
+  <g class="serif" font-size="11">
+    <text x="687" y="81">Usually</text>
+    <text x="687" y="96">implemented</text>
+    <text x="687" y="110">as a circular</text>
+    <text x="687" y="125">buffer</text>
+    <text x="686" y="160">Next to</text>
+    <text x="690" y="177">commit</text>
+  </g>
+  <text class="sans" x="679" y="192" font-size="13">Register no.</text>
+  <path class="arrow" d="M 683 81 L 648 88"/>
+  <path class="arrow" d="M 683 160 L 641 167"/>
+
+  <!-- Instruction queue -->
+  <rect class="box" x="397" y="164" width="85" height="117"/>
+  <path class="row" d="M 397 183.5 H 482 M 397 203 H 482 M 397 222.5 H 482 M 397 242 H 482 M 397 261.5 H 482"/>
+  <text class="sans" x="397" y="83" font-size="13">From instruction unit</text>
+  <path class="arrow" d="M 459 92 V 164"/>
+  <text class="sans" x="394" y="139" font-size="13">Operation</text>
+  <text class="sans" x="398" y="156" font-size="13">Queue</text>
+  <g class="serif" font-size="10.5">
+    <text x="322" y="149">Instructions</text>
+    <text x="322" y="161">to issue in</text>
+    <text x="322" y="173">Order:</text>
+    <text x="322" y="186">Instruction</text>
+    <text x="322" y="200">Queue <tspan font-size="12">(IQ)</tspan></text>
+  </g>
+  <path class="arrow" d="M 378 176 L 409 192"/>
+
+  <!-- Architectural register file -->
+  <rect class="box" x="611" y="224" width="81" height="59"/>
+  <path class="row" d="M 611 230 H 692 M 611 236 H 692 M 611 257 H 692 M 611 264 H 692 M 611 270 H 692 M 611 277 H 692"/>
+  <text class="sans" x="651.5" y="251" font-size="13" text-anchor="middle">ARF</text>
+  <text class="sans" x="651.5" y="262" font-size="10" text-anchor="middle">...</text>
+
+  <!-- ROB to ARF: committed data and its register number -->
+  <path class="arrow" d="M 618 174 V 224"/>
+  <text class="sans" x="621" y="201" font-size="12">(data)</text>
+  <path class="arrow" d="M 658 174 V 201 H 719 V 245 H 702"/>
+
+  <!-- Operand buses: from the ARF and from the ROB to the reservation stations -->
+  <path class="wire" d="M 636 283 V 301 H 326"/>
+  <path class="wire" d="M 670 283 V 318 H 367"/>
+  <path class="wire" d="M 604 174 V 301"/>
+  <path class="wire" d="M 590 174 V 318"/>
+  <path class="arrow" d="M 326 301 V 402"/>
+  <path class="arrow" d="M 367 318 V 402"/>
+  <path class="arrow" d="M 531 301 V 402"/>
+  <path class="arrow" d="M 578 318 V 402"/>
+  <text class="sans" x="587" y="334" font-size="13">Operand</text>
+  <text class="sans" x="594" y="350" font-size="13">buses</text>
+
+  <!-- Operation bus: from the instruction queue to the reservation stations -->
+  <path class="wire" d="M 443 281 V 332 H 308"/>
+  <path class="wire" d="M 443 332 H 505"/>
+  <path class="arrow" d="M 308 332 V 402"/>
+  <path class="arrow" d="M 505 332 V 402"/>
+  <text class="sans" x="403" y="349" font-size="13">Operation bus</text>
+
+  <!-- Reservation stations and ALUs -->
+  <rect class="box" x="302" y="402" width="102" height="32"/>
+  <path class="row" d="M 314 402 V 434 M 351 402 V 434 M 302 412.7 H 404 M 302 423.3 H 404"/>
+  <rect class="box" x="497" y="402" width="104" height="21"/>
+  <path class="row" d="M 514 402 V 423 M 556 402 V 423 M 497 412.5 H 601"/>
+  <text class="sans" x="421" y="420" font-size="13">Reservation</text>
+  <text class="sans" x="421" y="436" font-size="13">stations</text>
+
+  <path class="arrow" d="M 336 434 V 462"/>
+  <path class="arrow" d="M 367 434 V 462"/>
+  <path class="arrow" d="M 542 423 V 462"/>
+  <path class="arrow" d="M 572 423 V 462"/>
+  <rect class="box" x="314" y="462" width="69" height="17"/>
+  <text class="sans" x="348.5" y="475" font-size="13" text-anchor="middle">ALU 1</text>
+  <rect class="box" x="519" y="462" width="69" height="17"/>
+  <text class="sans" x="553.5" y="475" font-size="13" text-anchor="middle">ALU 2</text>
+
+  <!-- Common data bus: from the ALUs to the reservation stations and the ROB -->
+  <path class="arrow" d="M 349 479 V 527"/>
+  <path class="arrow" d="M 554 479 V 527"/>
+  <path class="wire" d="M 341 527 H 760 V 34 H 600"/>
+  <path class="arrow" d="M 600 34 V 57"/>
+  <path class="wire" d="M 326 370 H 760"/>
+  <text class="sans" x="396" y="520" font-size="13">Common data bus</text>
+  <g fill="#000">
+    <circle cx="326" cy="370" r="3"/>
+    <circle cx="367" cy="370" r="3"/>
+    <circle cx="531" cy="370" r="3"/>
+    <circle cx="578" cy="370" r="3"/>
+    <circle cx="760" cy="370" r="3"/>
+    <circle cx="531" cy="301" r="2.5"/>
+    <circle cx="604" cy="301" r="2.5"/>
+    <circle cx="578" cy="318" r="2.5"/>
+    <circle cx="590" cy="318" r="2.5"/>
+  </g>
+
+  <!-- Caption -->
+  <rect x="55" y="538" width="330" height="28" fill="#fff" stroke="#000" stroke-width="1.6"/>
+  <text class="serif" x="62" y="558" font-size="16.5">Speculative Tomasulo-based Processor</text>
+</svg>
