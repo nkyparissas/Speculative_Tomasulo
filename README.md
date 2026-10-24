@@ -1,7 +1,7 @@
 # Hardware-based Speculation (Speculative Tomasulo)
 An out-of-order processor in VHDL based on the speculative Tomasulo algorithm.
 
-This version was vibecoded by Nick Kyparissas using Claude Opus 5.5. It is based on the original Speculative Tomasulo project, a Computer Architecture coursework at the Technical University of Crete (School of ECE) by N. Kyparissas and A. Kampylafkas, whose design it restructures, simplifies, documents, tests and corrects.
+This version was vibecoded by Nick Kyparissas using Claude Opus 5.5. It is based on the original Speculative Tomasulo project, a Computer Architecture coursework at the Technical University of Crete (School of ECE) by N. Kyparissas and A. Kampylafkas, whose design it restructures, simplifies, documents, tests and corrects. The original version is preserved in the [`original`](https://github.com/nkyparissas/Speculative_Tomasulo/tree/original) branch.
 
 ![Block diagram of the original project](doc/Speculative_Tomasulo.png)
 
